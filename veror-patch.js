@@ -545,3 +545,46 @@ window.loadTopChartHome = async function () {
 };
 
 console.log('[veror-patch] ready →', VEROR_URL);
+
+// ══════════════════════════════════════════════════════════════════
+//  8. FIX: override startProg & updAll agar sync ke IFrame
+// ══════════════════════════════════════════════════════════════════
+
+// Override startProg lama — lama ngandalin audio.duration yang = 0
+const _origStartProg = window.startProg;
+window.startProg = function () {
+  // Kalau IFrame aktif, biarkan _ytStartProg yang handle
+  if (_ytPlayer && _ytReady) return;
+  if (_origStartProg) _origStartProg();
+};
+
+// Override updHeroPlayBtn agar pakai isPlaying dari IFrame
+const _origUpdHeroPlayBtn = window.updHeroPlayBtn;
+window.updHeroPlayBtn = function () {
+  if (_origUpdHeroPlayBtn) _origUpdHeroPlayBtn();
+  // Sync tombol play di hero section
+  const hPlayIco = document.getElementById('hPlayIco');
+  if (hPlayIco) hPlayIco.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+};
+
+// Force updAll setiap kali state IFrame berubah sudah dilakukan di _ytOnState.
+// Tambah: sync cbIco (tombol play di player bar bawah) secara eksplisit
+const _origUpdAll = window.updAll;
+window.updAll = function () {
+  if (_origUpdAll) _origUpdAll();
+  // Pastikan icon play/pause di control bar sync
+  const cbIco = document.getElementById('cbIco');
+  if (cbIco) cbIco.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+  // Mini player bar
+  const plEq = document.getElementById('plEq');
+  if (plEq) plEq.classList.toggle('show', isPlaying);
+  // NP panel
+  if (typeof npOpen !== 'undefined' && npOpen) {
+    const npPlayIco = document.getElementById('npPlayIco');
+    if (npPlayIco) npPlayIco.className = isPlaying ? 'fas fa-pause' : 'fas fa-play';
+    const npVinyl = document.getElementById('npVinyl');
+    if (npVinyl) npVinyl.classList.toggle('playing', isPlaying);
+  }
+};
+
+console.log('[veror-patch] UI sync patch applied');
