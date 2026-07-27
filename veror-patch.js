@@ -7,7 +7,7 @@
 
 // ── 1. URL backend baru ──────────────────────────────────────────
 // Ganti nilai ini setelah deploy veroR ke Vercel
-const VEROR_URL = 'https://GANTI-DENGAN-URL-VERCEL-VERO-R.vercel.app';
+const VEROR_URL = 'vero-r.vercel.app';
 
 // Override variabel lama agar semua referensi BACKEND_URL ikut berubah
 window.BACKEND_URL = VEROR_URL;
