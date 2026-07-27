@@ -1,137 +1,162 @@
 // ─────────────────────────────────────────────────────────────────
-//  veror-patch.js  —  veroR backend + YouTube IFrame Player
+//  veror-patch.js  —  YouTube IFrame engine + veroR search
 //  Pasang SETELAH semua script lain, sebelum </body>
 // ─────────────────────────────────────────────────────────────────
-
-const VEROR_URL = 'https://vero-r.vercel.app'; // ← ganti jika URL berubah
-
+const VEROR_URL = 'https://vero-r.vercel.app';
 window.BACKEND_URL = VEROR_URL;
 
 // ══════════════════════════════════════════════════════════════════
-//  1. YOUTUBE IFRAME ENGINE
+//  1. IFRAME ENGINE
 // ══════════════════════════════════════════════════════════════════
-
-// Inject YouTube IFrame API script sekali saja
 (function () {
   if (document.getElementById('yt-iframe-api')) return;
   const s = document.createElement('script');
-  s.id  = 'yt-iframe-api';
+  s.id = 'yt-iframe-api';
   s.src = 'https://www.youtube.com/iframe_api';
   document.head.appendChild(s);
 })();
 
-// Container tersembunyi untuk IFrame player
-const _ytContainer = document.createElement('div');
-_ytContainer.id = 'yt-hidden-player';
-_ytContainer.style.cssText = 'position:fixed;bottom:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;opacity:0;';
-document.body.appendChild(_ytContainer);
+// Container IFrame — di luar semua .page agar tidak ikut di-hide
+const _ytWrap = document.createElement('div');
+_ytWrap.id = 'yt-player-wrap';
+_ytWrap.style.cssText = 'position:fixed;width:1px;height:1px;bottom:0;left:0;opacity:0;pointer-events:none;z-index:-1';
+document.body.appendChild(_ytWrap);
 
-let _ytPlayer     = null;   // instance YT.Player
-let _ytReady      = false;  // API sudah load?
-let _ytPending    = null;   // videoId yang mau diputar sebelum player siap
-let _ytTrack      = null;   // track object yang sedang aktif
-let _ytProgressId = null;   // setInterval untuk progress bar
-let _ytAudioCtx   = null;   // AudioContext untuk visualizer
-let _ytAnalyser   = null;
-let _ytGainNode   = null;
-let _ytVolume     = 1.0;
-let _ytQueue      = [];     // antrian videoId + track objects
-let _ytQueueIdx   = -1;
+let _ytPlayer  = null;
+let _ytReady   = false;
+let _ytPending = null;   // videoId yang antri sebelum player siap
+let _ytProgId  = null;
 
-// Callback dari YouTube IFrame API saat siap
+// ── Init player ───────────────────────────────────────────────────
 window.onYouTubeIframeAPIReady = function () {
-  _ytPlayer = new YT.Player('yt-hidden-player', {
+  _ytPlayer = new YT.Player('yt-player-wrap', {
     height: '1', width: '1',
-    playerVars: {
-      autoplay: 0, controls: 0, disablekb: 1,
-      enablejsapi: 1, fs: 0, iv_load_policy: 3,
-      modestbranding: 1, playsinline: 1, rel: 0,
-    },
+    playerVars: { autoplay:0, controls:0, disablekb:1, enablejsapi:1,
+                  fs:0, iv_load_policy:3, modestbranding:1, playsinline:1, rel:0 },
     events: {
-      onReady:       _onYTReady,
-      onStateChange: _onYTStateChange,
-      onError:       _onYTError,
+      onReady:       _ytOnReady,
+      onStateChange: _ytOnState,
+      onError:       _ytOnError,
     },
   });
 };
 
-function _onYTReady() {
+function _ytOnReady() {
   _ytReady = true;
-  // Set volume awal dari slider yang sudah ada
-  const vol = typeof currentVolume !== 'undefined' ? currentVolume : 1;
-  _ytVolume = vol;
-  _ytPlayer.setVolume(Math.round(vol * 100));
-  if (_ytPending) { _ytLoadAndPlay(_ytPending); _ytPending = null; }
+  _ytSetVol(typeof vol !== 'undefined' ? vol : 0.7);
+  if (_ytPending) { _ytLoad(_ytPending); _ytPending = null; }
 }
 
-function _onYTStateChange(e) {
+function _ytOnState(e) {
   const S = YT.PlayerState;
   if (e.data === S.PLAYING) {
-    _ytStartProgress();
-    _ytUpdateUI('play');
-    _ytInitVisualizer();
+    isPlaying = true;
+    _ytStartProg();
+    updAll();
+    _ytVizStart();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   } else if (e.data === S.PAUSED) {
-    _ytStopProgress();
-    _ytUpdateUI('pause');
+    isPlaying = false;
+    _ytStopProg();
+    updAll();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   } else if (e.data === S.ENDED) {
-    _ytStopProgress();
-    _ytUpdateUI('pause');
-    _ytPlayNext();
-  } else if (e.data === S.BUFFERING) {
-    // opsional: tampilkan loading
+    isPlaying = false;
+    _ytStopProg();
+    updAll();
+    // Pakai sistem next lama
+    if (typeof playNextTrack === 'function') playNextTrack();
+    else if (typeof playNext === 'function') playNext();
   }
 }
 
-function _onYTError(e) {
-  console.warn('[YT IFrame] error code:', e.data);
-  toast('⚠️ Lagu tidak tersedia di YouTube (' + e.data + ')');
-  _ytStopProgress();
-  _ytPlayNext();
+function _ytOnError(e) {
+  console.warn('[YT]', e.data);
+  toast('⚠️ Lagu tidak tersedia (' + e.data + ')');
+  isPlaying = false;
+  _ytStopProg();
+  updAll();
+  if (typeof playNextTrack === 'function') playNextTrack();
 }
 
-// ── Load + play videoId ───────────────────────────────────────────
-function _ytLoadAndPlay(videoId) {
+// ── Load videoId ke player ────────────────────────────────────────
+function _ytLoad(videoId) {
   if (!_ytReady || !_ytPlayer) { _ytPending = videoId; return; }
   _ytPlayer.loadVideoById(videoId);
-  _ytPlayer.setVolume(Math.round(_ytVolume * 100));
 }
 
-// ── Progress bar ─────────────────────────────────────────────────
-function _ytStartProgress() {
-  _ytStopProgress();
-  _ytProgressId = setInterval(() => {
+// ── Volume ────────────────────────────────────────────────────────
+function _ytSetVol(v) {
+  if (_ytPlayer && _ytReady) _ytPlayer.setVolume(Math.round(v * 100));
+}
+
+// ── Progress bar — sync ke elemen lama ───────────────────────────
+function _ytStartProg() {
+  _ytStopProg();
+  _ytProgId = setInterval(() => {
     if (!_ytPlayer || !_ytReady) return;
     try {
       const cur = _ytPlayer.getCurrentTime() || 0;
       const dur = _ytPlayer.getDuration()    || 0;
-      _ytSyncUI(cur, dur);
+      if (!dur) return;
+      const pct = (cur / dur) * 100;
+      // progress bar utama
+      const prfill = document.getElementById('prfill');
+      if (prfill) prfill.style.width = pct + '%';
+      const ptCur = document.getElementById('ptCur');
+      if (ptCur) ptCur.textContent = fmt(cur);
+      const ptTot = document.getElementById('ptTot');
+      if (ptTot) ptTot.textContent = fmt(dur);
+      // now playing panel
+      const npPrfill = document.getElementById('npPrfill');
+      if (npPrfill) npPrfill.style.width = pct + '%';
+      const npCur = document.getElementById('npCur');
+      if (npCur) npCur.textContent = fmt(cur);
+      const npTot = document.getElementById('npTot');
+      if (npTot) npTot.textContent = fmt(dur);
+      // mini player
+      const plPrfill = document.getElementById('plPrfill');
+      if (plPrfill) plPrfill.style.width = pct + '%';
+      // mediaSession
+      if ('mediaSession' in navigator && typeof _updPos === 'function') _updPos();
     } catch (_) {}
-  }, 500);
+  }, 400);
 }
 
-function _ytStopProgress() {
-  if (_ytProgressId) { clearInterval(_ytProgressId); _ytProgressId = null; }
+function _ytStopProg() {
+  if (_ytProgId) { clearInterval(_ytProgId); _ytProgId = null; }
 }
 
-// ── Seek (dipanggil dari progress bar lama) ───────────────────────
-const _origSeek = window.seekTo;
-window.seekTo = function (pct) {
-  if (!_ytPlayer || !_ytReady) { if (_origSeek) _origSeek(pct); return; }
-  try {
-    const dur = _ytPlayer.getDuration() || 0;
-    if (dur) _ytPlayer.seekTo(dur * pct, true);
-  } catch (_) {}
-};
+// ── Visualizer (fake — IFrame cross-origin tidak bisa AudioContext) ─
+let _ytVizId = null;
+function _ytVizStart() {
+  if (_ytVizId) return;
+  const canvas = document.getElementById('visualizerCanvas') || document.getElementById('waveCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  function draw() {
+    _ytVizId = requestAnimationFrame(draw);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const bars = 48, w = canvas.width / bars;
+    for (let i = 0; i < bars; i++) {
+      const h = (Math.sin(Date.now() / 300 + i * 0.4) * 0.5 + 0.5)
+              * (Math.random() * 0.3 + 0.7) * canvas.height * 0.75;
+      ctx.fillStyle = `hsla(${140 + i * 2},70%,55%,.85)`;
+      ctx.fillRect(i * w + 1, canvas.height - h, w - 2, h);
+    }
+  }
+  draw();
+}
+function _ytVizStop() {
+  if (_ytVizId) { cancelAnimationFrame(_ytVizId); _ytVizId = null; }
+}
 
-// ── Volume ────────────────────────────────────────────────────────
-const _origSetVol = window.setVolume;
-window.setVolume = function (v) {
-  _ytVolume = v;
-  if (_ytPlayer && _ytReady) _ytPlayer.setVolume(Math.round(v * 100));
-  if (_origSetVol) _origSetVol(v);
-};
+// ══════════════════════════════════════════════════════════════════
+//  2. OVERRIDE KONTROL — sambungkan ke IFrame
+// ══════════════════════════════════════════════════════════════════
 
-// ── Play / Pause toggle ───────────────────────────────────────────
+// togglePlay
 const _origToggle = window.togglePlay;
 window.togglePlay = function () {
   if (!_ytPlayer || !_ytReady) { if (_origToggle) _origToggle(); return; }
@@ -142,129 +167,206 @@ window.togglePlay = function () {
   } catch (_) {}
 };
 
-// ── Queue & next/prev ─────────────────────────────────────────────
-function _ytPlayNext() {
-  if (_ytQueue.length && _ytQueueIdx < _ytQueue.length - 1) {
-    _ytQueueIdx++;
-    const t = _ytQueue[_ytQueueIdx];
-    _ytTrack = t;
-    _ytShowHero(t);
-    _ytLoadAndPlay(t.videoId);
-    _saveTrackYT(t);
-  } else if (typeof playNext === 'function') {
-    playNext();
-  }
-}
-
-const _origNext = window.playNext;
-window.playNext = function () {
-  if (_ytQueue.length && _ytQueueIdx < _ytQueue.length - 1) { _ytPlayNext(); return; }
-  if (_origNext) _origNext();
+// seek — progress bar lama pakai prbar onclick → npSeek / seekClick
+const _origNpSeek = window.npSeek;
+window.npSeek = function (e) {
+  if (!_ytPlayer || !_ytReady) { if (_origNpSeek) _origNpSeek(e); return; }
+  const bar = document.getElementById('npPrbar');
+  if (!bar) return;
+  const pct = e.offsetX / bar.offsetWidth;
+  try { _ytPlayer.seekTo(_ytPlayer.getDuration() * pct, true); } catch (_) {}
 };
 
-const _origPrev = window.playPrev;
-window.playPrev = function () {
-  if (_ytPlayer && _ytReady) {
-    try {
-      if ((_ytPlayer.getCurrentTime() || 0) > 3) { _ytPlayer.seekTo(0, true); return; }
-    } catch (_) {}
-  }
-  if (_ytQueue.length && _ytQueueIdx > 0) {
-    _ytQueueIdx--;
-    const t = _ytQueue[_ytQueueIdx];
-    _ytTrack = t;
-    _ytShowHero(t);
-    _ytLoadAndPlay(t.videoId);
-  } else if (_origPrev) {
-    _origPrev();
-  }
+// progress bar utama
+const prbar = document.getElementById('prbar');
+if (prbar) {
+  prbar.addEventListener('click', function (e) {
+    if (!_ytPlayer || !_ytReady) return;
+    const pct = e.offsetX / prbar.offsetWidth;
+    try { _ytPlayer.seekTo(_ytPlayer.getDuration() * pct, true); } catch (_) {}
+  });
+}
+
+// volume
+const _origSetVol = window.setVolume;
+window.setVolume = function (v) {
+  _ytSetVol(v);
+  // jangan panggil origSetVol karena dia set audio.volume yang tidak dipakai
 };
-
-// ── Visualizer via AudioContext ───────────────────────────────────
-function _ytInitVisualizer() {
-  // IFrame audio tidak bisa di-capture AudioContext karena cross-origin.
-  // Kita buat visualizer animasi saja (fake waveform) agar UI tetap hidup.
-  if (typeof startFakeVisualizer === 'function') { startFakeVisualizer(); return; }
-  const canvas = document.getElementById('visualizerCanvas') || document.getElementById('waveCanvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  let frame;
-  function draw() {
-    frame = requestAnimationFrame(draw);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const bars = 48, w = canvas.width / bars;
-    for (let i = 0; i < bars; i++) {
-      const h = (Math.sin(Date.now() / 300 + i * 0.4) * 0.5 + 0.5)
-              * (Math.random() * 0.3 + 0.7) * canvas.height * 0.8;
-      ctx.fillStyle = `hsla(${140 + i * 2}, 70%, 55%, 0.85)`;
-      ctx.fillRect(i * w + 1, canvas.height - h, w - 2, h);
-    }
-  }
-  // Hentikan frame lama kalau ada
-  if (window._ytVizFrame) cancelAnimationFrame(window._ytVizFrame);
-  window._ytVizFrame = frame;
-  draw();
+// slider volume lama
+const volSlider = document.getElementById('volSlider') || document.getElementById('volRange');
+if (volSlider) {
+  volSlider.addEventListener('input', function () {
+    const v = parseFloat(this.value);
+    vol = v;
+    _ytSetVol(v);
+  });
 }
 
-// ── Sync UI (progress, waktu) ────────────────────────────────────
-function _ytSyncUI(cur, dur) {
-  // Progress bar
-  const bar = document.getElementById('progressBar') || document.getElementById('seekBar');
-  if (bar) {
-    const pct = dur ? (cur / dur) * 100 : 0;
-    bar.style.width = pct + '%';
-    if (bar.tagName === 'INPUT') bar.value = pct;
-  }
-  // Waktu
-  const fmt = (s) => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-  const elCur = document.getElementById('currentTime') || document.getElementById('timeNow');
-  const elDur = document.getElementById('totalTime')   || document.getElementById('timeDur');
-  if (elCur) elCur.textContent = fmt(cur);
-  if (elDur) elDur.textContent = fmt(dur);
-}
-
-// ── Update tombol play/pause di UI ───────────────────────────────
-function _ytUpdateUI(state) {
-  const btn = document.getElementById('playBtn') || document.getElementById('playPauseBtn');
-  if (!btn) return;
-  const icon = btn.querySelector('i') || btn;
-  if (state === 'play') {
-    icon.className = icon.className?.replace('fa-play','fa-pause') || 'fas fa-pause';
-  } else {
-    icon.className = icon.className?.replace('fa-pause','fa-play') || 'fas fa-play';
-  }
-}
-
-// ── Show hero / now playing ───────────────────────────────────────
-function _ytShowHero(track) {
-  if (typeof showHero === 'function') { showHero(track, 'youtube'); return; }
-  // Fallback manual
-  const title = document.getElementById('trackTitle') || document.getElementById('nowTitle');
-  const artist = document.getElementById('trackArtist') || document.getElementById('nowArtist');
-  const thumb  = document.getElementById('trackThumb')  || document.getElementById('nowThumb');
-  if (title)  title.textContent  = track.title  || '';
-  if (artist) artist.textContent = track.artist || '';
-  if (thumb)  thumb.src          = track.thumbnail || '';
-}
+// mute
+const _origToggleMute = window.toggleMute;
+window.toggleMute = function () {
+  if (!_ytPlayer || !_ytReady) { if (_origToggleMute) _origToggleMute(); return; }
+  try {
+    if (_ytPlayer.isMuted()) { _ytPlayer.unMute(); isMuted = false; }
+    else { _ytPlayer.mute(); isMuted = true; }
+    updAll();
+  } catch (_) {}
+};
 
 // ══════════════════════════════════════════════════════════════════
-//  2. SEARCH (tetap via veroR)
+//  3. PLAY TRACK — entry point utama
+// ══════════════════════════════════════════════════════════════════
+
+window.playYouTube = function (track) {
+  const videoId   = track.videoId || track.video_id || track.id;
+  if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+    toast('⚠️ Video ID tidak valid'); return;
+  }
+  const trackObj = {
+    id:        videoId,
+    videoId,
+    video_id:  videoId,
+    title:     track.title     || 'Unknown',
+    artist:    track.artist    || 'Unknown',
+    album:     track.album     || '',
+    duration:  track.duration  || '0:00',
+    year:      track.year      || new Date().getFullYear(),
+    thumbnail: track.thumbnail || (typeof PH !== 'undefined' ? PH : ''),
+    audio:     null,   // tidak pakai audio element
+    audioUrl:  null,
+    source:    'youtube',
+    playCount: track.playCount || 0,
+  };
+
+  // Set currentTrack agar sistem lama (like, queue, dll) tetap jalan
+  currentTrack = trackObj;
+
+  // Hentikan audio element lama kalau masih bunyi
+  try { if (typeof audio !== 'undefined' && audio) { audio.pause(); audio.src = ''; } } catch (_) {}
+
+  // Tampilkan hero + mini player
+  showHero(trackObj, 'youtube');
+  _ytShowMiniPlayer(trackObj);
+
+  // Load ke IFrame
+  _ytLoad(videoId);
+
+  // Queue lama
+  if (typeof queue !== 'undefined') {
+    const existing = queue.findIndex(q => q.id === videoId);
+    if (existing === -1) { queue.push(trackObj); qi = queue.length - 1; }
+    else qi = existing;
+    if (typeof LS !== 'undefined') LS.sq(queue);
+  }
+
+  // History
+  if (typeof histArr !== 'undefined') {
+    histArr = histArr.filter(h => h.id !== videoId);
+    histArr.unshift(trackObj);
+    if (histArr.length > 50) histArr.pop();
+    if (typeof LS !== 'undefined') LS.sh(histArr);
+  }
+
+  // mediaSession
+  _ytMediaSession(trackObj);
+
+  // Simpan ke Supabase
+  _saveTrackYT(trackObj);
+};
+
+// mini player bar bawah
+function _ytShowMiniPlayer(t) {
+  const plImg   = document.getElementById('plImg');
+  const plTitle = document.getElementById('plTitle');
+  const plArt   = document.getElementById('plArt');
+  const pbar    = document.getElementById('pbar');
+  if (plImg)   plImg.src         = t.thumbnail || '';
+  if (plTitle) plTitle.textContent = t.title   || '';
+  if (plArt)   plArt.textContent  = t.artist  || '';
+  if (pbar)    pbar.classList.add('up');
+}
+
+// mediaSession API agar kontrol di notif HP jalan
+function _ytMediaSession(t) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title:  t.title  || '',
+    artist: t.artist || '',
+    album:  t.album  || '',
+    artwork: t.thumbnail ? [{ src: t.thumbnail, sizes: '512x512', type: 'image/jpeg' }] : [],
+  });
+  navigator.mediaSession.setActionHandler('play',           () => { if (_ytPlayer && _ytReady) _ytPlayer.playVideo(); });
+  navigator.mediaSession.setActionHandler('pause',          () => { if (_ytPlayer && _ytReady) _ytPlayer.pauseVideo(); });
+  navigator.mediaSession.setActionHandler('nexttrack',      () => { if (typeof playNextTrack === 'function') playNextTrack(); else if (typeof playNext === 'function') playNext(); });
+  navigator.mediaSession.setActionHandler('previoustrack',  () => { if (typeof playPrevTrack === 'function') playPrevTrack(); else if (typeof playPrev === 'function') playPrev(); });
+  navigator.mediaSession.setActionHandler('seekto', (d) => { if (_ytPlayer && _ytReady) _ytPlayer.seekTo(d.seekTime, true); });
+}
+
+// Override playTrackObj dan playAppleMusic
+window.playTrackObj = async function (t) {
+  const vid = t.videoId || t.video_id || t.id;
+  if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) playYouTube({ ...t, videoId: vid });
+  else toast('⚠️ Format track tidak dikenali');
+};
+window.playAppleMusic = window.playYouTube; // alias aman
+
+// ══════════════════════════════════════════════════════════════════
+//  4. SUPABASE
+// ══════════════════════════════════════════════════════════════════
+
+async function _saveTrackYT(track) {
+  if (typeof sb === 'undefined' || !window.SB_URL) return;
+  try {
+    const rows = await sb.get('tracks', `id=eq.${encodeURIComponent(track.videoId)}`);
+    const pc   = rows?.length ? (rows[0].play_count || 0) + 1 : 1;
+    await fetch(`${window.SB_URL}/rest/v1/tracks?on_conflict=id`, {
+      method: 'POST',
+      headers: { ...sb._h, Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({
+        id: track.videoId, video_id: track.videoId,
+        title: track.title, artist: track.artist,
+        thumbnail: track.thumbnail || null,
+        duration: track.duration   || null,
+        play_count: pc,
+        last_played: new Date().toISOString(),
+        searched_by: (typeof session !== 'undefined' ? session?.nama : null) || null,
+        source: 'youtube',
+      }),
+    });
+  } catch (e) { console.warn('[saveTrackYT]', e.message); }
+}
+
+window.rowToTrack = function (r, src = 'db') {
+  return {
+    id: r.id, videoId: r.video_id || r.id, video_id: r.video_id || r.id,
+    title: r.title || '', artist: r.artist || '',
+    album: r.album || '', duration: r.duration || '',
+    year: r.year || '–',
+    thumbnail: typeof resizeThumb === 'function'
+               ? resizeThumb(r.thumbnail || '', 300) : (r.thumbnail || ''),
+    audio: null, audioUrl: null,
+    playCount: r.play_count || 0, source: src,
+  };
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  5. SEARCH
 // ══════════════════════════════════════════════════════════════════
 
 window.doSearch = async function () {
   const q = document.getElementById('sInput')?.value?.trim();
-  if (!q) { toast('Masukkan kata kunci pencarian'); return; }
+  if (!q) { toast('Masukkan kata kunci'); return; }
   if (typeof navigate === 'function' && window.currentPage !== 'beranda') navigate('beranda');
   if (typeof setBtnLoad === 'function') setBtnLoad(true);
   if (typeof setState  === 'function') setState('load');
   if (typeof setStLoad === 'function') setStLoad(`Mencari "${q}"`, '🎵 YouTube Music...');
   try {
-    const res  = await fetch(`${VEROR_URL}/api/search?q=${encodeURIComponent(q)}`);
-    const d    = await res.json();
-    if (!d.ok) throw new Error(d.message || 'Pencarian gagal');
+    const res = await fetch(`${VEROR_URL}/api/search?q=${encodeURIComponent(q)}`);
+    const d   = await res.json();
+    if (!d.ok) throw new Error(d.message || 'Gagal');
     if (!d.result?.length) throw new Error('Tidak ada hasil');
-    _renderYTResults(d.result, q);
+    _renderResults(d.result);
     if (typeof saveSug === 'function') saveSug(q);
   } catch (err) {
     if (typeof setState === 'function') setState('err');
@@ -278,7 +380,7 @@ window.doSearch = async function () {
   }
 };
 
-function _renderYTResults(results, query) {
+function _renderResults(results) {
   const wrap = document.getElementById('searchResultsWrap');
   const grid = document.getElementById('srGrid');
   const lbl  = document.getElementById('searchResultsLabel');
@@ -310,131 +412,57 @@ function _renderYTResults(results, query) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  3. PLAY TRACK (via IFrame, bukan proxy)
-// ══════════════════════════════════════════════════════════════════
-
-window.playYouTube = async function (track) {
-  const videoId   = track.videoId || track.video_id || track.id;
-  const title     = track.title     || 'Unknown';
-  const artist    = track.artist    || 'Unknown';
-  const thumbnail = track.thumbnail || (typeof PH !== 'undefined' ? PH : '');
-  const duration  = track.duration  || '';
-
-  if (!videoId) { toast('Video ID tidak ditemukan'); return; }
-
-  const trackObj = {
-    id: videoId, videoId, video_id: videoId,
-    title, artist, thumbnail, duration,
-    audio: null, source: 'youtube',
-  };
-
-  _ytTrack = trackObj;
-
-  // Tambah ke queue
-  if (_ytQueueIdx === -1 || _ytQueue[_ytQueueIdx]?.videoId !== videoId) {
-    _ytQueue = _ytQueue.slice(0, _ytQueueIdx + 1);
-    _ytQueue.push(trackObj);
-    _ytQueueIdx = _ytQueue.length - 1;
-  }
-
-  _ytShowHero(trackObj);
-  _ytLoadAndPlay(videoId);
-  _saveTrackYT(trackObj);
-
-  if (typeof setState  === 'function') setState('none');
-  if (typeof addToQueue === 'function') addToQueue(trackObj);
-};
-
-// Override playTrackObj agar lagu dari DB juga lewat IFrame
-window.playTrackObj = async function (t) {
-  const vid = t.videoId || t.video_id || t.id;
-  if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) {
-    playYouTube({ ...t, videoId: vid });
-  } else {
-    toast('⚠️ Format track tidak dikenali');
-  }
-};
-
-// ══════════════════════════════════════════════════════════════════
-//  4. SUPABASE — simpan video_id bukan audio_url
-// ══════════════════════════════════════════════════════════════════
-
-async function _saveTrackYT(track) {
-  try {
-    const rows = await sb.get('tracks', `id=eq.${encodeURIComponent(track.videoId)}`);
-    const pc   = rows?.length ? (rows[0].play_count || 0) + 1 : 1;
-    await fetch(`${window.SB_URL}/rest/v1/tracks?on_conflict=id`, {
-      method: 'POST',
-      headers: { ...sb._h, Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({
-        id:          track.videoId,
-        video_id:    track.videoId,
-        title:       track.title,
-        artist:      track.artist,
-        thumbnail:   track.thumbnail || null,
-        duration:    track.duration  || null,
-        play_count:  pc,
-        last_played: new Date().toISOString(),
-        searched_by: (typeof session !== 'undefined' ? session?.nama : null) || null,
-        source:      'youtube',
-      }),
-    });
-  } catch (e) { console.warn('[saveTrackYT]', e.message); }
-}
-
-window.rowToTrack = function (r, src = 'db') {
-  return {
-    id:        r.id,
-    videoId:   r.video_id || r.id,
-    video_id:  r.video_id || r.id,
-    title:     r.title    || '',
-    artist:    r.artist   || '',
-    duration:  r.duration || '',
-    thumbnail: typeof resizeThumb === 'function'
-               ? resizeThumb(r.thumbnail || '', 300)
-               : (r.thumbnail || ''),
-    audio:     null,
-    playCount: r.play_count || 0,
-    source:    src,
-  };
-};
-
-// ══════════════════════════════════════════════════════════════════
-//  5. PARTY & CHAT
+//  6. PARTY & CHAT
 // ══════════════════════════════════════════════════════════════════
 
 window.playPartyTrack = async function (pi) {
-  toast('🎉 Memutar dari Party Queue...');
   const vid = pi.track_id || pi.video_id;
   if (vid && /^[A-Za-z0-9_-]{11}$/.test(vid)) {
     playYouTube({ videoId: vid, title: pi.title, artist: pi.artist, thumbnail: pi.thumbnail });
     if (typeof navigate === 'function') navigate('beranda');
-  } else {
-    toast('⚠️ Format track tidak valid');
-  }
+  } else toast('⚠️ Format track tidak valid');
 };
 
 window.playFromChat = async function (trackId) {
   if (/^[A-Za-z0-9_-]{11}$/.test(trackId)) {
     playYouTube({ videoId: trackId });
   } else {
-    const t = (_ytQueue || []).find(q => q.id === trackId);
-    if (t) playYouTube(t);
-    else toast('Gagal load lagu');
+    const t = (typeof queue !== 'undefined' ? queue : []).find(q => q.id === trackId);
+    if (t) playYouTube(t); else toast('Gagal load lagu');
   }
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  6. HOME FEED
+//  7. HOME FEED
 // ══════════════════════════════════════════════════════════════════
 
 async function _loadHomeFeed() {
   try {
     const res = await fetch(`${VEROR_URL}/api/home`);
     const d   = await res.json();
-    if (!d.ok || !d.sections?.length) return null;
-    return d.sections;
+    return (d.ok && d.sections?.length) ? d.sections : null;
   } catch { return null; }
+}
+
+function _makeQpCard(r, onClick) {
+  const card = document.createElement('div');
+  card.className = 'qp-card sk-loaded';
+  card.addEventListener('click', onClick);
+  const thumb = document.createElement('div'); thumb.className = 'qp-thumb';
+  const img   = document.createElement('img');
+  img.src = r.thumbnail || ''; img.loading = 'lazy';
+  img.onerror = function () { this.src = typeof PH !== 'undefined' ? PH : ''; };
+  const pb = document.createElement('button'); pb.className = 'qp-play-btn';
+  pb.innerHTML = '<i class="fas fa-play"></i>';
+  pb.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+  thumb.appendChild(img); thumb.appendChild(pb); card.appendChild(thumb);
+  const te = document.createElement('div'); te.className = 'qp-title'; te.textContent = r.title || '';
+  const ae = document.createElement('div'); ae.className = 'qp-artist'; ae.textContent = r.artist || '';
+  const me = document.createElement('div'); me.className = 'qp-meta';
+  me.innerHTML = (r.play_count ? `<span><i class="fas fa-headphones" style="font-size:.48rem"></i> ${r.play_count}×</span>` : '')
+               + (r.duration ? `<span>${r.duration}</span>` : '');
+  card.appendChild(te); card.appendChild(ae); card.appendChild(me);
+  return card;
 }
 
 window.loadQuickPlay = async function () {
@@ -442,73 +470,38 @@ window.loadQuickPlay = async function () {
   const sec = document.getElementById('quickPlaySec');
   if (!el || !sec) return;
 
-  // Coba DB dulu
   try {
     const rows = await sb.get('tracks', 'order=last_played.desc.nullslast&limit=50');
     if (rows?.length) {
       sec.style.display = 'block';
-      if (document.getElementById('qpCnt'))
-        document.getElementById('qpCnt').textContent = rows.length;
+      const cnt = document.getElementById('qpCnt');
+      if (cnt) cnt.textContent = rows.length;
       el.innerHTML = '';
-      rows.forEach((r) => {
-        const t    = rowToTrack(r, 'db');
-        const card = document.createElement('div');
-        card.className = 'qp-card sk-loaded';
-        card.addEventListener('click', () => playYouTube(t));
-        const thumb = document.createElement('div'); thumb.className = 'qp-thumb';
-        const img   = document.createElement('img');
-        img.src = r.thumbnail || ''; img.loading = 'lazy';
-        img.onerror = function () { this.src = typeof PH !== 'undefined' ? PH : ''; };
-        const pb = document.createElement('button'); pb.className = 'qp-play-btn';
-        pb.innerHTML = '<i class="fas fa-play"></i>';
-        pb.addEventListener('click', (e) => { e.stopPropagation(); playYouTube(t); });
-        thumb.appendChild(img); thumb.appendChild(pb); card.appendChild(thumb);
-        const te = document.createElement('div'); te.className = 'qp-title'; te.textContent = r.title || '';
-        const ae = document.createElement('div'); ae.className = 'qp-artist'; ae.textContent = r.artist || '';
-        const me = document.createElement('div'); me.className = 'qp-meta';
-        me.innerHTML = `<span><i class="fas fa-headphones" style="font-size:.48rem"></i> ${r.play_count||0}×</span>${r.duration?'<span>'+r.duration+'</span>':''}`;
-        card.appendChild(te); card.appendChild(ae); card.appendChild(me);
-        el.appendChild(card);
+      rows.forEach(r => {
+        const t = rowToTrack(r, 'db');
+        el.appendChild(_makeQpCard({ ...r }, () => playYouTube(t)));
       });
       return;
     }
   } catch (e) { console.warn('[loadQuickPlay]', e.message); }
 
-  // DB kosong — pakai home feed YouTube
   const sections = await _loadHomeFeed();
   if (!sections) { sec.style.display = 'none'; return; }
   sec.style.display = 'block';
-  const first = sections[0];
-  if (document.getElementById('qpCnt'))
-    document.getElementById('qpCnt').textContent = first.items.length;
+  const cnt = document.getElementById('qpCnt');
+  if (cnt) cnt.textContent = sections[0].items.length;
   el.innerHTML = '';
-  first.items.forEach((r) => {
-    const card = document.createElement('div');
-    card.className = 'qp-card sk-loaded';
-    card.addEventListener('click', () => playYouTube(r));
-    const thumb = document.createElement('div'); thumb.className = 'qp-thumb';
-    const img   = document.createElement('img'); img.src = r.thumbnail || '';
-    img.onerror = function () { this.src = typeof PH !== 'undefined' ? PH : ''; };
-    const pb = document.createElement('button'); pb.className = 'qp-play-btn';
-    pb.innerHTML = '<i class="fas fa-play"></i>';
-    pb.addEventListener('click', (e) => { e.stopPropagation(); playYouTube(r); });
-    thumb.appendChild(img); thumb.appendChild(pb); card.appendChild(thumb);
-    const te = document.createElement('div'); te.className = 'qp-title'; te.textContent = r.title || '';
-    const ae = document.createElement('div'); ae.className = 'qp-artist'; ae.textContent = r.artist || '';
-    const me = document.createElement('div'); me.className = 'qp-meta';
-    me.innerHTML = r.duration ? `<span>${r.duration}</span>` : '';
-    card.appendChild(te); card.appendChild(ae); card.appendChild(me);
-    el.appendChild(card);
-  });
+  sections[0].items.forEach(r => el.appendChild(_makeQpCard(r, () => playYouTube(r))));
 
   // Section tambahan
-  const extra = document.getElementById('ytExtraSections') || (() => {
-    const d = document.createElement('div');
-    d.id = 'ytExtraSections'; d.style.marginTop = '16px';
-    sec.appendChild(d); return d;
-  })();
+  let extra = document.getElementById('ytExtraSections');
+  if (!extra) {
+    extra = document.createElement('div');
+    extra.id = 'ytExtraSections'; extra.style.marginTop = '16px';
+    sec.appendChild(extra);
+  }
   extra.innerHTML = '';
-  sections.slice(1).forEach((sec2) => {
+  sections.slice(1).forEach(sec2 => {
     const h = document.createElement('h3');
     h.style.cssText = 'font-size:.85rem;font-weight:700;color:var(--tx,#eef);margin:16px 0 8px';
     h.textContent = sec2.label; extra.appendChild(h);
@@ -551,4 +544,4 @@ window.loadTopChartHome = async function () {
   if (sec) sec.style.display = 'none';
 };
 
-console.log('[veror-patch] IFrame engine ready →', VEROR_URL);
+console.log('[veror-patch] ready →', VEROR_URL);
