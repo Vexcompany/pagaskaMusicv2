@@ -328,3 +328,153 @@ window.playFromChat = async function (trackId) {
 };
 
 console.log('[veror-patch] loaded — backend:', VEROR_URL);
+
+// ── 13. Home Feed — ganti loadQuickPlay & loadTopChartHome ───────
+// Kalau DB kosong, langsung ambil dari YouTube Music.
+
+async function _loadHomeFeed() {
+  try {
+    const res = await fetch(`${VEROR_URL}/api/home`);
+    const d   = await res.json();
+    if (!d.ok || !d.sections?.length) return null;
+    return d.sections;
+  } catch { return null; }
+}
+
+window.loadQuickPlay = async function () {
+  const el  = document.getElementById('qpGrid');
+  const sec = document.getElementById('quickPlaySec');
+  if (!el || !sec) return;
+
+  // Coba DB dulu
+  try {
+    const rows = await sb.get('tracks', 'order=last_played.desc.nullslast&limit=50');
+    if (rows?.length) {
+      // Ada data di DB — render normal seperti sebelumnya
+      sec.style.display = 'block';
+      document.getElementById('qpCnt') && (document.getElementById('qpCnt').textContent = rows.length);
+      el.innerHTML = '';
+      rows.forEach((r) => {
+        const t = rowToTrack(r, 'db');
+        const card = document.createElement('div');
+        card.className = 'qp-card';
+        card.addEventListener('click', () => playTrackObj(t));
+        const thumb = document.createElement('div'); thumb.className = 'qp-thumb';
+        const img   = document.createElement('img');
+        img.src = r.thumbnail || (typeof PH !== 'undefined' ? PH : '');
+        img.onerror = function () { this.src = (typeof PH !== 'undefined' ? PH : ''); };
+        img.loading = 'lazy';
+        const pb = document.createElement('button'); pb.className = 'qp-play-btn';
+        pb.innerHTML = '<i class="fas fa-play"></i>';
+        pb.addEventListener('click', (e) => { e.stopPropagation(); playTrackObj(t); });
+        thumb.appendChild(img); thumb.appendChild(pb); card.appendChild(thumb);
+        const te = document.createElement('div'); te.className = 'qp-title'; te.textContent = r.title || '';
+        const ae = document.createElement('div'); ae.className = 'qp-artist'; ae.textContent = r.artist || '';
+        const me = document.createElement('div'); me.className = 'qp-meta';
+        me.innerHTML = `<span><i class="fas fa-headphones" style="font-size:.48rem"></i> ${r.play_count || 0}×</span>${r.duration ? '<span>' + r.duration + '</span>' : ''}`;
+        card.appendChild(te); card.appendChild(ae); card.appendChild(me);
+        card.classList.add('sk-loaded');
+        el.appendChild(card);
+      });
+      return;
+    }
+  } catch (e) { console.warn('[loadQuickPlay]', e.message); }
+
+  // DB kosong — ambil dari YouTube Music
+  const sections = await _loadHomeFeed();
+  if (!sections) { sec.style.display = 'none'; return; }
+
+  sec.style.display = 'block';
+
+  // Tampilkan section pertama di qpGrid (gaya kartu horizontal)
+  const first = sections[0];
+  if (document.getElementById('qpCnt'))
+    document.getElementById('qpCnt').textContent = first.items.length;
+
+  el.innerHTML = '';
+  first.items.forEach((r) => {
+    const card = document.createElement('div');
+    card.className = 'qp-card sk-loaded';
+    card.addEventListener('click', () => playYouTube(r));
+
+    const thumb = document.createElement('div'); thumb.className = 'qp-thumb';
+    const img   = document.createElement('img');
+    img.src = r.thumbnail || '';
+    img.onerror = function () { this.src = (typeof PH !== 'undefined' ? PH : ''); };
+    const pb = document.createElement('button'); pb.className = 'qp-play-btn';
+    pb.innerHTML = '<i class="fas fa-play"></i>';
+    pb.addEventListener('click', (e) => { e.stopPropagation(); playYouTube(r); });
+    thumb.appendChild(img); thumb.appendChild(pb); card.appendChild(thumb);
+
+    const te = document.createElement('div'); te.className = 'qp-title'; te.textContent = r.title || '';
+    const ae = document.createElement('div'); ae.className = 'qp-artist'; ae.textContent = r.artist || '';
+    const me = document.createElement('div'); me.className = 'qp-meta';
+    me.innerHTML = r.duration ? `<span>${r.duration}</span>` : '';
+    card.appendChild(te); card.appendChild(ae); card.appendChild(me);
+    el.appendChild(card);
+  });
+
+  // Section ke-2 dan ke-3: render sebagai chart list di bawah qpGrid
+  const extra = document.getElementById('ytExtraSections');
+  const container = extra || (() => {
+    const d = document.createElement('div');
+    d.id = 'ytExtraSections';
+    d.style.cssText = 'margin-top:16px';
+    sec.appendChild(d);
+    return d;
+  })();
+  container.innerHTML = '';
+
+  sections.slice(1).forEach((sec2) => {
+    const h = document.createElement('h3');
+    h.style.cssText = 'font-size:.85rem;font-weight:700;color:var(--tx,#eef);margin:16px 0 8px';
+    h.textContent = sec2.label;
+    container.appendChild(h);
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+    sec2.items.slice(0, 8).forEach((r, i) => {
+      const row = document.createElement('div');
+      row.className = 'chart-item';
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => playYouTube(r));
+
+      const rank = document.createElement('div'); rank.className = 'chart-rank';
+      rank.textContent = i + 1;
+      const th = document.createElement('div'); th.className = 'chart-th';
+      const img = document.createElement('img');
+      img.src = r.thumbnail || '';
+      img.onerror = function () { this.src = ''; };
+      th.appendChild(img);
+      const inf = document.createElement('div'); inf.className = 'chart-inf';
+      const ct = document.createElement('div'); ct.className = 'chart-t'; ct.textContent = r.title || '';
+      const ca = document.createElement('div'); ca.className = 'chart-a'; ca.textContent = r.artist || '';
+      inf.appendChild(ct); inf.appendChild(ca);
+      const dur = document.createElement('div');
+      dur.style.cssText = 'font-size:.7rem;color:var(--t2,#888);margin-left:auto';
+      dur.textContent = r.duration || '';
+
+      row.appendChild(rank); row.appendChild(th); row.appendChild(inf); row.appendChild(dur);
+      list.appendChild(row);
+    });
+    container.appendChild(list);
+  });
+};
+
+window.loadTopChartHome = async function () {
+  // Kalau DB ada data, render normal
+  try {
+    const rows = await sb.get('tracks', 'order=play_count.desc&limit=5&play_count=gt.0');
+    if (rows?.length) {
+      const sec = document.getElementById('chartSecHome');
+      if (sec) sec.style.display = 'block';
+      if (typeof renderChartList === 'function') renderChartList(rows, 'chartListHome');
+      return;
+    }
+  } catch {}
+  // DB kosong — sembunyikan saja, sudah ada home feed di Quick Play
+  const sec = document.getElementById('chartSecHome');
+  if (sec) sec.style.display = 'none';
+};
+
+console.log('[veror-patch] home feed ready');
