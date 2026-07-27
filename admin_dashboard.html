@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Admin Panel — Pagaska Music</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07071a;--s1:#0d0d24;--s2:#141438;--s3:#1a1a44;--s4:#202055;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --tx:#eeeeff;--mt:#8888bb;
+  --rd:#ff4d6d;--g:#1DB954;--g2:#1ed760;--p:#7c5cbf;--p2:#9b7fe8;--yw:#ffa726;--b2:#6aabff;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 50% at 20% 0%,rgba(255,77,109,.07),transparent 60%),
+             radial-gradient(ellipse 50% 40% at 80% 100%,rgba(124,92,191,.06),transparent 60%)}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;position:relative;z-index:1}
+@media(max-width:768px){.app{grid-template-columns:1fr}.sidebar{display:none}}
+.sidebar{background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sb-brand{padding:20px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.sb-logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--rd),#c9184a);display:flex;align-items:center;justify-content:center;font-size:.95rem;color:#fff;flex-shrink:0;box-shadow:0 0 16px rgba(255,77,109,.3)}
+.sb-name{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:800}
+.sb-sub{font-size:.6rem;color:var(--mt);margin-top:1px;letter-spacing:1px;text-transform:uppercase}
+.sb-admin{padding:14px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.sb-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--rd),#c9184a);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;color:#fff;flex-shrink:0}
+.sb-admin-name{font-size:.8rem;font-weight:600}
+.sb-admin-role{font-size:.62rem;color:var(--rd)}
+.sb-nav{padding:12px 10px;flex:1}
+.sb-section{font-size:.58rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mt);padding:8px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;cursor:pointer;transition:all .2s;color:var(--mt);font-size:.8rem;font-weight:500;border:none;background:transparent;font-family:inherit;width:100%;text-align:left}
+.sb-item:hover{background:var(--s2);color:var(--tx)}
+.sb-item.active{background:rgba(255,77,109,.1);color:var(--rd);border:1px solid rgba(255,77,109,.2)}
+.sb-item i{width:16px;text-align:center;font-size:.85rem}
+.sb-badge{margin-left:auto;font-size:.6rem;background:var(--rd);color:#fff;padding:1px 7px;border-radius:20px;font-weight:700}
+.sb-bottom{padding:14px 18px;border-top:1px solid var(--bd)}
+.sb-bottom a{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--mt);text-decoration:none;padding:8px;border-radius:9px;transition:all .2s}
+.sb-bottom a:hover{background:var(--s2);color:var(--tx)}
+.main{padding:0;overflow-x:hidden}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(7,7,26,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.topbar-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;display:flex;align-items:center;gap:10px}
+.topbar-title i{color:var(--rd)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.tb-btn{padding:7px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--s2);color:var(--mt);font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;display:flex;align-items:center;gap:6px}
+.tb-btn:hover{background:var(--s3);color:var(--tx)}
+.tb-btn.danger{border-color:rgba(255,77,109,.3);color:var(--rd)}
+.tb-btn.danger:hover{background:rgba(255,77,109,.1)}
+.content{padding:20px 24px}
+@media(max-width:768px){.content{padding:14px}}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:16px;display:flex;align-items:center;gap:12px}
+.stat-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.stat-ico.green{background:rgba(29,185,84,.12);color:var(--g);border:1px solid rgba(29,185,84,.2)}
+.stat-ico.red{background:rgba(255,77,109,.12);color:var(--rd);border:1px solid rgba(255,77,109,.2)}
+.stat-ico.purple{background:rgba(124,92,191,.12);color:var(--p2);border:1px solid rgba(124,92,191,.2)}
+.stat-ico.yellow{background:rgba(255,167,38,.12);color:var(--yw);border:1px solid rgba(255,167,38,.2)}
+.stat-num{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
+.stat-lbl{font-size:.65rem;color:var(--mt);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.panel{display:none}.panel.active{display:block}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+.panel-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.panel-actions{display:flex;gap:8px;flex-wrap:wrap}
+.search-bar{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;margin-bottom:14px}
+.search-bar i{color:var(--mt);font-size:.8rem;flex-shrink:0}
+.search-bar input{flex:1;background:transparent;border:none;outline:none;color:var(--tx);font-size:.82rem;font-family:inherit}
+.search-bar input::placeholder{color:var(--mt)}
+.tbl-wrap{background:var(--s1);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.tbl-item{display:grid;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);transition:background .18s}
+.tbl-item:last-child{border-bottom:none}
+.tbl-item:hover{background:var(--s2)}
+.tbl-tracks{grid-template-columns:40px 1fr auto auto}
+.tbl-party{grid-template-columns:40px 1fr auto auto}
+.tbl-head{background:var(--s2);border-bottom:1px solid var(--bd2)!important;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--mt);cursor:default}
+.tbl-head:hover{background:var(--s2)!important}
+.tbl-thumb{width:40px;height:40px;border-radius:8px;overflow:hidden;flex-shrink:0}
+.tbl-thumb img{width:100%;height:100%;object-fit:cover}
+.tbl-info{min-width:0}
+.tbl-title{font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.tbl-meta{font-size:.68rem;color:var(--mt);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tbl-badge{font-size:.58rem;padding:2px 7px;border-radius:6px;font-weight:700}
+.badge-storage{background:rgba(29,185,84,.12);color:var(--g);border:1px solid rgba(29,185,84,.2)}
+.badge-nexray{background:rgba(61,142,248,.12);color:#6aabff;border:1px solid rgba(61,142,248,.2)}
+.badge-preview{background:rgba(255,167,38,.12);color:var(--yw);border:1px solid rgba(255,167,38,.2)}
+.tbl-plays{font-size:.75rem;font-weight:700;color:var(--g);text-align:center;white-space:nowrap}
+.tbl-actions{display:flex;gap:4px;justify-content:flex-end}
+.act-btn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;color:var(--mt);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;transition:all .2s}
+.act-btn:hover{background:var(--s3);color:var(--tx)}
+.act-btn.del:hover{background:rgba(255,77,109,.15);color:var(--rd)}
+.act-btn.play:hover{background:rgba(255,0,0,.15);color:#ff4444}
+.empty{text-align:center;padding:40px 20px;color:var(--mt);font-size:.82rem}
+.empty i{font-size:2rem;display:block;margin-bottom:10px;opacity:.3}
+.spin{animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* MODAL */
+.modal-bg{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{width:100%;max-width:340px;background:var(--s2);border:1px solid var(--bd2);border-radius:18px;padding:24px 20px;box-shadow:0 24px 60px rgba(0,0,0,.8);animation:mIn .25s cubic-bezier(.16,1,.3,1)}
+@keyframes mIn{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:scale(1)}}
+.modal-ico{width:48px;height:48px;border-radius:14px;background:rgba(255,77,109,.12);border:1px solid rgba(255,77,109,.25);color:var(--rd);display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin:0 auto 12px}
+.modal h3{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;text-align:center;margin-bottom:6px}
+.modal p{font-size:.78rem;color:var(--mt);text-align:center;margin-bottom:16px;line-height:1.6}
+.modal-track{font-weight:700;color:var(--tx);display:block;margin-top:4px}
+.modal-btns{display:flex;gap:8px}
+.btn-cancel{flex:1;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--s3);color:var(--mt);font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-cancel:hover{background:var(--s4);color:var(--tx)}
+.btn-del{flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--rd),#c9184a);color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-del:hover{transform:scale(1.02);box-shadow:0 4px 16px rgba(255,77,109,.4)}
+.btn-del:disabled{opacity:.6;cursor:not-allowed;transform:none}
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--s3);color:var(--tx);padding:8px 18px;border-radius:10px;font-size:.78rem;border:1px solid var(--bd2);opacity:0;transition:all .25s;z-index:9999;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+/* MOBILE NAV */
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(7,7,26,.97);backdrop-filter:blur(16px);border-top:1px solid var(--bd);padding:8px;z-index:100}
+@media(max-width:768px){.mobile-nav{display:flex;justify-content:space-around}}
+.mn-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 12px;border-radius:10px;cursor:pointer;font-size:.55rem;font-weight:600;color:var(--mt);border:none;background:transparent;font-family:inherit;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+.mn-item i{font-size:1.1rem}
+.mn-item.active{color:var(--rd)}
+@media(max-width:768px){.content{padding-bottom:80px}}
+/* FORM */
+.form-input{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--bd);background:rgba(255,255,255,.05);color:var(--tx);font-size:.82rem;font-family:inherit;outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--p2)}
+.form-label{font-size:.65rem;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px}
+.form-section-label{font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:var(--p2);text-transform:uppercase;letter-spacing:1.5px;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.form-section-label::after{content:'';flex:1;height:1px;background:rgba(155,127,232,.2)}
+/* VTUBER */
+.vt-row-detail{display:none;padding:14px 16px 16px;border-bottom:1px solid var(--bd);background:rgba(124,92,191,.03)}
+.vt-row-detail.open{display:block}
+/* YouTube embed */
+.yt-embed-wrap{position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000;margin-top:8px}
+.yt-embed-wrap iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+/* URL input dengan status indicator */
+.yt-input-wrap{position:relative}
+.yt-input-wrap .yt-status{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:.75rem;pointer-events:none}
+/* Sosmed & donasi chips */
+.sosmed-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.sosmed-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;text-decoration:none;transition:opacity .2s}
+.sosmed-chip:hover{opacity:.8}
+.chip-yt{background:rgba(255,0,0,.12);color:#ff4444;border:1px solid rgba(255,0,0,.2)}
+.chip-tw{background:rgba(29,161,242,.12);color:#1da1f2;border:1px solid rgba(29,161,242,.2)}
+.chip-ig{background:rgba(225,48,108,.12);color:#e1306c;border:1px solid rgba(225,48,108,.2)}
+.chip-tt{background:rgba(255,255,255,.08);color:var(--tx);border:1px solid var(--bd2)}
+.chip-saw{background:rgba(255,167,38,.12);color:var(--yw);border:1px solid rgba(255,167,38,.2)}
+.chip-trk{background:rgba(255,77,109,.12);color:var(--rd);border:1px solid rgba(255,77,109,.2)}
+.chip-soc{background:rgba(106,171,255,.12);color:var(--b2);border:1px solid rgba(106,171,255,.2)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-logo"><i class="fas fa-shield-halved"></i></div>
+      <div><div class="sb-name">Admin Panel</div><div class="sb-sub">Pagaska Music</div></div>
+    </div>
+    <div class="sb-admin">
+      <div class="sb-av" id="sbAv">A</div>
+      <div><div class="sb-admin-name" id="sbName">Admin</div><div class="sb-admin-role">Administrator</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Kelola</div>
+      <button class="sb-item active" id="nav-tracks" onclick="showPanel('tracks')"><i class="fas fa-music"></i> Lagu (Beranda)<span class="sb-badge" id="tracksBadge">–</span></button>
+      <button class="sb-item" id="nav-party" onclick="showPanel('party')"><i class="fas fa-users"></i> Party Queue<span class="sb-badge" id="partyBadge">–</span></button>
+      <button class="sb-item" id="nav-vtuber" onclick="showPanel('vtuber')"><i class="fas fa-star"></i> VTuber Cover<span class="sb-badge" id="vtuberBadge">–</span></button>
+      <div class="sb-section">Info</div>
+      <button class="sb-item" id="nav-stats" onclick="showPanel('stats')"><i class="fas fa-chart-bar"></i> Statistik</button>
+      <button class="sb-item" id="nav-notif" onclick="showPanel('notif')"><i class="fas fa-bell"></i> Kirim Notifikasi</button>
+    </nav>
+    <div class="sb-bottom">
+      <a href="index.html"><i class="fas fa-arrow-left"></i> Kembali ke Player</a>
+      <a href="#" onclick="doLogout()" style="color:var(--rd)"><i class="fas fa-sign-out-alt"></i> Keluar</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title"><i class="fas fa-shield-halved"></i> <span id="panelTitle">Kelola Lagu</span></div>
+      <div class="topbar-right">
+        <button class="tb-btn" onclick="refreshAll()"><i class="fas fa-sync-alt"></i> Refresh</button>
+        <button class="tb-btn danger" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i></button>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-ico green"><i class="fas fa-music"></i></div><div><div class="stat-num" id="sc-tracks">–</div><div class="stat-lbl">Total Lagu</div></div></div>
+        <div class="stat-card"><div class="stat-ico purple"><i class="fas fa-list"></i></div><div><div class="stat-num" id="sc-party">–</div><div class="stat-lbl">Party Queue</div></div></div>
+        <div class="stat-card"><div class="stat-ico red"><i class="fas fa-headphones"></i></div><div><div class="stat-num" id="sc-plays">–</div><div class="stat-lbl">Total Putar</div></div></div>
+        <div class="stat-card"><div class="stat-ico yellow"><i class="fas fa-database"></i></div><div><div class="stat-num" id="sc-storage">–</div><div class="stat-lbl">Di Storage</div></div></div>
+      </div>
+
+      <!-- PANEL: TRACKS -->
+      <div class="panel active" id="panel-tracks">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fas fa-music" style="color:var(--g)"></i> Lagu di Beranda</div>
+          <div class="panel-actions"><button class="tb-btn danger" onclick="clearAllTracks()"><i class="fas fa-trash-alt"></i> Hapus Semua</button></div>
+        </div>
+        <div class="search-bar"><i class="fas fa-search"></i><input type="text" id="trackSearch" placeholder="Cari judul atau artis..." oninput="filterTracks()"></div>
+        <div class="tbl-wrap" id="tracksList"><div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div></div>
+      </div>
+
+      <!-- PANEL: PARTY -->
+      <div class="panel" id="panel-party">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fas fa-users" style="color:var(--p2)"></i> Party Queue</div>
+          <div class="panel-actions"><button class="tb-btn danger" onclick="clearPartyQueue()"><i class="fas fa-trash-alt"></i> Kosongkan Queue</button></div>
+        </div>
+        <div class="tbl-wrap" id="partyList"><div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div></div>
+      </div>
+
+      <!-- PANEL: VTUBER -->
+      <div class="panel" id="panel-vtuber">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fas fa-star" style="color:var(--yw)"></i> VTuber Cover Archive</div>
+          <div class="panel-actions">
+            <button class="tb-btn" onclick="openVtuberUpload()" style="background:linear-gradient(135deg,var(--p),var(--p2));border-color:var(--p);color:#fff"><i class="fas fa-plus"></i> Tambah Cover</button>
+          </div>
+        </div>
+
+        <!-- Form Upload -->
+        <div id="vtuberUploadForm" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:20px;margin-bottom:16px">
+          <div style="font-size:.85rem;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;justify-content:space-between">
+            <span><i class="fas fa-star" style="color:var(--yw)"></i> Tambah Cover VTuber</span>
+            <button onclick="closeVtuberUpload()" style="background:transparent;border:none;color:var(--mt);cursor:pointer;font-size:.9rem"><i class="fas fa-times"></i></button>
+          </div>
+          <p style="font-size:.7rem;color:var(--mt);margin-bottom:14px">Semua konten audio menggunakan YouTube embed — tidak ada file yang disimpan di server.</p>
+
+          <!-- Info Lagu -->
+          <div class="form-section-label"><i class="fas fa-music"></i> Info Lagu</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label class="form-label">Judul Lagu Asli *</label>
+              <input id="vtTitle" type="text" placeholder="cth: Blessing" class="form-input">
+            </div>
+            <div>
+              <label class="form-label">Artis / Pencipta Asli *</label>
+              <input id="vtOrigArtist" type="text" placeholder="cth: Hikaru Utada" class="form-input">
+            </div>
+            <div>
+              <label class="form-label">Nama VTuber (yang cover) *</label>
+              <input id="vtVtuberName" type="text" placeholder="cth: Hoshimachi Suisei" class="form-input" oninput="updateCopyrightPreview()">
+            </div>
+            <div>
+              <label class="form-label">Nama Agensi *</label>
+              <input id="vtAgency" type="text" placeholder="cth: hololive production" class="form-input" oninput="updateCopyrightPreview()">
+            </div>
+            <div>
+              <label class="form-label">Tahun Cover</label>
+              <input id="vtYear" type="number" placeholder="cth: 2023" min="2000" max="2099" class="form-input">
+            </div>
+            <div>
+              <label class="form-label">URL Thumbnail (opsional)</label>
+              <input id="vtThumb" type="url" placeholder="https://... atau kosongkan" class="form-input">
+            </div>
+          </div>
+
+          <!-- YouTube -->
+          <div class="form-section-label"><i class="fab fa-youtube" style="color:#ff4444"></i> Link YouTube *</div>
+          <div>
+            <label class="form-label">Tempel link YouTube biasa — otomatis jadi embed</label>
+            <div class="yt-input-wrap">
+              <input id="vtYoutubeUrl" type="url" placeholder="https://youtube.com/watch?v=... atau https://youtu.be/..." class="form-input" style="padding-right:36px" oninput="onYtInputChange()">
+              <span class="yt-status" id="ytStatus"></span>
+            </div>
+            <!-- Preview embed langsung muncul di bawah input -->
+            <div id="ytFormPreview" style="display:none;margin-top:10px">
+              <div class="yt-embed-wrap">
+                <iframe id="ytFormFrame" src="" allowfullscreen allow="autoplay; encrypted-media" loading="lazy"></iframe>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sosial Media -->
+          <div class="form-section-label"><i class="fas fa-share-alt"></i> Sosial Media VTuber</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+              <label class="form-label"><i class="fab fa-youtube" style="color:#ff4444"></i> Channel YouTube</label>
+              <input id="vtSosmedYt" type="url" placeholder="https://youtube.com/@..." class="form-input">
+            </div>
+            <div>
+              <label class="form-label"><i class="fab fa-twitter" style="color:#1da1f2"></i> Twitter / X</label>
+              <input id="vtSosmedTw" type="url" placeholder="https://twitter.com/..." class="form-input">
+            </div>
+            <div>
+              <label class="form-label"><i class="fab fa-instagram" style="color:#e1306c"></i> Instagram</label>
+              <input id="vtSosmedIg" type="url" placeholder="https://instagram.com/..." class="form-input">
+            </div>
+            <div>
+              <label class="form-label"><i class="fab fa-tiktok"></i> TikTok</label>
+              <input id="vtSosmedTt" type="url" placeholder="https://tiktok.com/@..." class="form-input">
+            </div>
+          </div>
+
+          <!-- Donasi -->
+          <div class="form-section-label"><i class="fas fa-hand-holding-heart"></i> Link Donasi / Support</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div>
+              <label class="form-label"><i class="fas fa-mug-hot" style="color:var(--yw)"></i> Saweria</label>
+              <input id="vtDonSaweria" type="url" placeholder="https://saweria.co/..." class="form-input">
+            </div>
+            <div>
+              <label class="form-label"><i class="fas fa-heart" style="color:var(--rd)"></i> Trakteer</label>
+              <input id="vtDonTrakteer" type="url" placeholder="https://trakteer.id/..." class="form-input">
+            </div>
+            <div>
+              <label class="form-label"><i class="fas fa-users" style="color:var(--b2)"></i> Sociabuzz</label>
+              <input id="vtDonSociabuzz" type="url" placeholder="https://sociabuzz.com/..." class="form-input">
+            </div>
+          </div>
+
+          <!-- Deskripsi -->
+          <div class="form-section-label"><i class="fas fa-align-left"></i> Catatan</div>
+          <textarea id="vtDesc" placeholder="Catatan tentang cover ini... (opsional)" rows="2" class="form-input" style="resize:vertical"></textarea>
+
+          <!-- Copyright preview -->
+          <div id="vtCopyrightPreview" style="margin-top:12px;padding:10px 14px;background:rgba(155,127,232,.07);border:1px solid rgba(155,127,232,.2);border-radius:10px;font-size:.72rem;color:var(--mt);line-height:1.6;display:none">
+            <i class="fas fa-shield-alt" style="color:var(--p2);margin-right:6px"></i><span id="vtCopyrightText"></span>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button onclick="closeVtuberUpload()" class="btn-cancel" style="flex:0 0 auto;padding:10px 18px">Batal</button>
+            <button onclick="submitVtuberUpload()" id="vtSubmitBtn" style="flex:1;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px">
+              <i class="fas fa-save"></i> Simpan ke Arsip
+            </button>
+          </div>
+          <div id="vtUploadResult" style="font-size:.75rem;text-align:center;margin-top:8px;min-height:16px"></div>
+        </div>
+
+        <!-- List -->
+        <div class="search-bar"><i class="fas fa-search"></i><input type="text" id="vtuberSearch" placeholder="Cari judul, VTuber, atau agensi..." oninput="filterVtuber()"></div>
+        <div class="tbl-wrap" id="vtuberList"><div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div></div>
+      </div>
+
+      <!-- PANEL: NOTIF -->
+      <div class="panel" id="panel-notif">
+        <div class="panel-head"><div class="panel-title"><i class="fas fa-bell" style="color:var(--yw)"></i> Kirim Notifikasi ke User</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:20px">
+            <div style="font-size:.82rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px"><i class="fas fa-paper-plane" style="color:var(--g)"></i> Buat Notifikasi</div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div><label class="form-label">Judul *</label><input id="notifTitle" type="text" placeholder="Contoh: Update Baru!" class="form-input"></div>
+              <div><label class="form-label">Isi Pesan *</label><textarea id="notifBody" placeholder="Tulis isi notifikasi..." rows="3" class="form-input" style="resize:vertical"></textarea></div>
+              <div>
+                <label class="form-label">Tipe</label>
+                <select id="notifType" class="form-input" style="background:var(--s2)">
+                  <option value="info">ℹ️ Info</option><option value="success">✅ Success</option>
+                  <option value="warning">⚠️ Warning</option><option value="promo">🎁 Promo</option>
+                </select>
+              </div>
+              <div><label class="form-label">Target User (kosongkan = semua)</label><input id="notifTarget" type="text" placeholder="nama_generasi atau kosongkan untuk semua" class="form-input"></div>
+              <button onclick="sendAdminNotif()" style="padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--g),#00b4d8);color:#000;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px"><i class="fas fa-paper-plane"></i> Kirim Notifikasi</button>
+              <div id="notifSendResult" style="font-size:.75rem;text-align:center;min-height:16px"></div>
+            </div>
+          </div>
+          <div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:20px">
+            <div style="font-size:.82rem;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px"><i class="fas fa-history" style="color:var(--p2)"></i> Riwayat Notifikasi</div>
+            <div id="notifHistory" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto;scrollbar-width:none"><div style="text-align:center;color:var(--mt);font-size:.75rem;padding:20px">Memuat...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANEL: STATS -->
+      <div class="panel" id="panel-stats">
+        <div class="panel-title" style="margin-bottom:16px"><i class="fas fa-chart-bar" style="color:var(--yw)"></i> Statistik Detail</div>
+        <div class="tbl-wrap" id="statsContent"><div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE NAV -->
+<nav class="mobile-nav">
+  <button class="mn-item active" id="mn-tracks" onclick="showPanel('tracks')"><i class="fas fa-music"></i>Lagu</button>
+  <button class="mn-item" id="mn-party" onclick="showPanel('party')"><i class="fas fa-users"></i>Party</button>
+  <button class="mn-item" id="mn-vtuber" onclick="showPanel('vtuber')"><i class="fas fa-star"></i>VTuber</button>
+  <button class="mn-item" id="mn-stats" onclick="showPanel('stats')"><i class="fas fa-chart-bar"></i>Stats</button>
+  <button class="mn-item" id="mn-notif" onclick="showPanel('notif')"><i class="fas fa-bell"></i>Notif</button>
+</nav>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="confirmModal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-ico"><i class="fas fa-trash-alt"></i></div>
+    <h3>Hapus?</h3>
+    <p id="modalMsg">–<span class="modal-track" id="modalTrack"></span></p>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Batal</button>
+      <button class="btn-del" id="modalConfirmBtn"><i class="fas fa-trash-alt"></i> Hapus</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL  = 'https://ygwoddwdhelqcwhpqasl.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnd29kZHdkaGVscWN3aHBxYXNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NTEwNzcsImV4cCI6MjA4NzQyNzA3N30.y0tnci0aWnhWYpxb9v7M7I0X9ss-jAt0JvpOBnZgFzo';
+const ADMIN_KEY = 'pgsk_admin_session';
+const PH = 'https://placehold.co/40x40/0d0d24/1DB954?text=♪';
+const PH_VT = 'https://placehold.co/40x40/0d0d24/9b7fe8?text=♪';
+const HDR = { 'Content-Type':'application/json', apikey:SB_KEY, Authorization:'Bearer '+SB_KEY };
+
+// ── AUTH ──
+const adminSess = JSON.parse(localStorage.getItem(ADMIN_KEY)||'null');
+if (!adminSess?.isAdmin) window.location.href = 'admin.html';
+const adminName = adminSess?.nama || 'Admin';
+document.getElementById('sbAv').textContent   = adminName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+document.getElementById('sbName').textContent = adminName;
+function doLogout(){ localStorage.removeItem(ADMIN_KEY); window.location.href='admin.html'; }
+
+// ── UTILS ──
+function escHtml(s){
+  if(s==null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+// Menerima semua format URL YouTube yang umum
+function extractYoutubeId(url){
+  if(!url) return null;
+  const patterns = [
+    /[?&]v=([A-Za-z0-9_-]{11})/,          // youtube.com/watch?v=ID
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,      // youtu.be/ID
+    /\/embed\/([A-Za-z0-9_-]{11})/,        // youtube.com/embed/ID
+    /\/shorts\/([A-Za-z0-9_-]{11})/,       // youtube.com/shorts/ID
+    /\/live\/([A-Za-z0-9_-]{11})/,         // youtube.com/live/ID
+  ];
+  for(const p of patterns){ const m = url.match(p); if(m) return m[1]; }
+  return null;
+}
+
+// ── SUPABASE HELPERS ──
+async function sb_get(table, query=''){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {headers:HDR});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+async function sb_del(table, query){
+  const r = await fetch(`${SB_URL}/rest/v1/${table}?${query}`, {method:'DELETE',headers:HDR});
+  if(!r.ok){ const e=await r.text(); throw new Error(e||'Gagal'); }
+  return r;
+}
+
+// ── DATA ──
+let allTracks=[], allParty=[], allVtuberCovers=[];
+
+// ── TRACKS ──
+async function loadTracks(){
+  document.getElementById('tracksList').innerHTML='<div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div>';
+  try{
+    allTracks = await sb_get('tracks','order=last_played.desc.nullslast&limit=200');
+    renderTracks(allTracks);
+    document.getElementById('sc-tracks').textContent = allTracks.length;
+    document.getElementById('tracksBadge').textContent = allTracks.length;
+    document.getElementById('sc-plays').textContent = allTracks.reduce((a,b)=>a+(b.play_count||0),0);
+    document.getElementById('sc-storage').textContent = allTracks.filter(t=>t.audio_url&&!t.audio_url.includes('itunes')).length;
+  }catch(e){
+    document.getElementById('tracksList').innerHTML=`<div class="empty"><i class="fas fa-exclamation-triangle"></i>${escHtml(e.message)}</div>`;
+  }
+}
+function renderTracks(tracks){
+  const el=document.getElementById('tracksList');
+  if(!tracks.length){ el.innerHTML='<div class="empty"><i class="fas fa-music"></i>Belum ada lagu</div>'; return; }
+  el.innerHTML=`<div class="tbl-item tbl-tracks tbl-head"><div></div><div>Lagu</div><div style="text-align:center">Putar</div><div>Aksi</div></div>`;
+  tracks.forEach(t=>{
+    const srcBadge = t.audio_url?.includes('r2.cloudflarestorage.com')||t.audio_url?.includes(location.hostname)
+      ?'<span class="tbl-badge badge-storage">R2</span>'
+      :t.audio_url?.includes('itunes')||t.audio_url?.includes('p.scdn.co')
+      ?'<span class="tbl-badge badge-preview">Preview</span>'
+      :'<span class="tbl-badge badge-nexray">Nexray</span>';
+    const lastPlay = t.last_played ? new Date(t.last_played).toLocaleDateString('id-ID',{day:'numeric',month:'short'}) : '–';
+    const row=document.createElement('div'); row.className='tbl-item tbl-tracks';
+    const th=document.createElement('div'); th.className='tbl-thumb';
+    const img=document.createElement('img'); img.src=t.thumbnail||PH; img.loading='lazy'; img.onerror=function(){this.src=PH;}; th.appendChild(img);
+    const info=document.createElement('div'); info.className='tbl-info';
+    const ti=document.createElement('div'); ti.className='tbl-title'; ti.textContent=t.title||'–';
+    const me=document.createElement('div'); me.className='tbl-meta'; me.innerHTML=escHtml(t.artist||'–')+' '+srcBadge+' <span>'+escHtml(lastPlay)+'</span>';
+    info.appendChild(ti); info.appendChild(me);
+    const pl=document.createElement('div'); pl.className='tbl-plays'; pl.textContent=(t.play_count||0)+'×';
+    const ac=document.createElement('div'); ac.className='tbl-actions';
+    if(t.audio_url){ const pb=document.createElement('button'); pb.className='act-btn play'; pb.title='Preview'; pb.innerHTML='<i class="fas fa-play"></i>'; pb.addEventListener('click',()=>previewTrack(t.audio_url)); ac.appendChild(pb); }
+    const db=document.createElement('button'); db.className='act-btn del'; db.title='Hapus'; db.innerHTML='<i class="fas fa-trash-alt"></i>'; db.addEventListener('click',()=>confirmDeleteTrack(t.id,t.title||'')); ac.appendChild(db);
+    row.appendChild(th); row.appendChild(info); row.appendChild(pl); row.appendChild(ac);
+    el.appendChild(row);
+  });
+}
+function filterTracks(){
+  const q=document.getElementById('trackSearch').value.toLowerCase();
+  renderTracks(q?allTracks.filter(t=>(t.title||'').toLowerCase().includes(q)||(t.artist||'').toLowerCase().includes(q)):allTracks);
+}
+
+// ── PARTY ──
+async function loadParty(){
+  document.getElementById('partyList').innerHTML='<div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div>';
+  try{
+    allParty=await sb_get('party_queue','played=eq.false&order=added_at.asc&limit=100');
+    renderParty(allParty);
+    document.getElementById('sc-party').textContent=allParty.length;
+    document.getElementById('partyBadge').textContent=allParty.length;
+  }catch(e){
+    document.getElementById('partyList').innerHTML=`<div class="empty"><i class="fas fa-exclamation-triangle"></i>${escHtml(e.message)}</div>`;
+  }
+}
+function renderParty(items){
+  const el=document.getElementById('partyList');
+  if(!items.length){ el.innerHTML='<div class="empty"><i class="fas fa-list"></i>Party queue kosong</div>'; return; }
+  el.innerHTML=`<div class="tbl-item tbl-party tbl-head"><div></div><div>Lagu</div><div>Ditambah</div><div>Aksi</div></div>`;
+  items.forEach(t=>{
+    const by=(t.added_by||'').split('_').slice(0,-1).join(' ')||t.added_by||'–';
+    const time=t.added_at?new Date(t.added_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'–';
+    const row=document.createElement('div'); row.className='tbl-item tbl-party';
+    const th=document.createElement('div'); th.className='tbl-thumb';
+    const img=document.createElement('img'); img.src=t.thumbnail||PH; img.loading='lazy'; img.onerror=function(){this.src=PH;}; th.appendChild(img);
+    const info=document.createElement('div'); info.className='tbl-info';
+    const ti=document.createElement('div'); ti.className='tbl-title'; ti.textContent=t.title||'–';
+    const me=document.createElement('div'); me.className='tbl-meta';
+    me.appendChild(document.createTextNode((t.artist||'–')+' · '));
+    const byS=document.createElement('span'); byS.style.color='var(--p2)'; byS.textContent=by; me.appendChild(byS);
+    info.appendChild(ti); info.appendChild(me);
+    const te=document.createElement('div'); te.style.cssText='font-size:.72rem;color:var(--mt);white-space:nowrap'; te.textContent=time;
+    const ac=document.createElement('div'); ac.className='tbl-actions';
+    const db=document.createElement('button'); db.className='act-btn del'; db.innerHTML='<i class="fas fa-times"></i>'; db.addEventListener('click',()=>confirmDeleteParty(t.id,t.title||'')); ac.appendChild(db);
+    row.appendChild(th); row.appendChild(info); row.appendChild(te); row.appendChild(ac);
+    el.appendChild(row);
+  });
+}
+
+// ── STATS ──
+async function loadStats(){
+  const el=document.getElementById('statsContent');
+  const top=[...allTracks].sort((a,b)=>(b.play_count||0)-(a.play_count||0)).slice(0,10);
+  if(!top.length){ el.innerHTML='<div class="empty"><i class="fas fa-chart-bar"></i>Belum ada data</div>'; return; }
+  el.innerHTML='';
+  top.forEach((t,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:24px 40px 1fr auto;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--bd)';
+    const rc=i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--mt)';
+    const rank=document.createElement('div'); rank.style.cssText=`font-family:'Syne',sans-serif;font-weight:800;font-size:.9rem;color:${rc};text-align:center`; rank.textContent=i+1;
+    const th=document.createElement('div'); th.className='tbl-thumb';
+    const img=document.createElement('img'); img.src=t.thumbnail||PH; img.onerror=function(){this.src=PH;}; th.appendChild(img);
+    const info=document.createElement('div'); info.className='tbl-info';
+    const ti=document.createElement('div'); ti.className='tbl-title'; ti.textContent=t.title||'–';
+    const ar=document.createElement('div'); ar.className='tbl-meta'; ar.textContent=t.artist||'–';
+    info.appendChild(ti); info.appendChild(ar);
+    const pl=document.createElement('div'); pl.className='tbl-plays'; pl.textContent=(t.play_count||0)+'×';
+    row.appendChild(rank); row.appendChild(th); row.appendChild(info); row.appendChild(pl);
+    el.appendChild(row);
+  });
+}
+
+// ── ACTIONS ──
+let pendingDelete=null;
+
+function confirmDeleteTrack(id,title){
+  pendingDelete={type:'track',id};
+  document.getElementById('modalMsg').textContent='Hapus lagu ini secara permanen?';
+  document.getElementById('modalTrack').textContent=title;
+  document.getElementById('modalConfirmBtn').onclick=doDeleteTrack;
+  document.getElementById('confirmModal').classList.add('open');
+}
+async function doDeleteTrack(){
+  if(!pendingDelete) return;
+  const btn=document.getElementById('modalConfirmBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i>';
+  try{ await sb_del('tracks',`id=eq.${encodeURIComponent(pendingDelete.id)}`); toast('🗑️ Lagu dihapus!'); closeModal(); loadTracks(); }
+  catch(e){ toast('❌ Gagal: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-trash-alt"></i> Hapus';
+}
+
+function confirmDeleteParty(id,title){
+  pendingDelete={type:'party',id};
+  document.getElementById('modalMsg').textContent='Hapus dari party queue?';
+  document.getElementById('modalTrack').textContent=title;
+  document.getElementById('modalConfirmBtn').onclick=doDeleteParty;
+  document.getElementById('confirmModal').classList.add('open');
+}
+async function doDeleteParty(){
+  if(!pendingDelete) return;
+  const btn=document.getElementById('modalConfirmBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i>';
+  try{ await sb_del('party_queue',`id=eq.${encodeURIComponent(pendingDelete.id)}`); toast('🗑️ Dihapus!'); closeModal(); loadParty(); }
+  catch(e){ toast('❌ Gagal: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-trash-alt"></i> Hapus';
+}
+
+async function clearPartyQueue(){
+  if(!confirm('Kosongkan seluruh party queue?')) return;
+  try{ await sb_del('party_queue','played=eq.false'); toast('✅ Queue dikosongkan!'); loadParty(); }
+  catch(e){ toast('❌ Gagal: '+e.message); }
+}
+async function clearAllTracks(){
+  if(!confirm('HAPUS SEMUA LAGU? Tidak bisa dibatalkan!')) return;
+  if(!confirm('Yakin?')) return;
+  try{ await fetch(`${SB_URL}/rest/v1/tracks?id=neq.null`,{method:'DELETE',headers:HDR}); toast('✅ Semua lagu dihapus!'); loadTracks(); }
+  catch(e){ toast('❌ Gagal: '+e.message); }
+}
+function previewTrack(url){
+  const a=new Audio(url); a.volume=.5;
+  a.play().catch(()=>toast('⚠️ Tidak bisa preview'));
+  toast('▶ Preview...'); setTimeout(()=>a.pause(),8000);
+}
+
+// ── PANELS ──
+const panels=['tracks','party','vtuber','stats','notif'];
+function showPanel(name){
+  panels.forEach(p=>{
+    document.getElementById(`panel-${p}`).classList.toggle('active',p===name);
+    document.getElementById(`nav-${p}`)?.classList.toggle('active',p===name);
+    document.getElementById(`mn-${p}`)?.classList.toggle('active',p===name);
+  });
+  const titles={tracks:'Kelola Lagu',party:'Party Queue',stats:'Statistik',vtuber:'VTuber Cover Archive',notif:'Kirim Notifikasi'};
+  document.getElementById('panelTitle').textContent=titles[name]||name;
+  if(name==='notif') loadNotifHistory();
+  if(name==='stats') loadStats();
+  if(name==='vtuber') loadVtuberCovers();
+}
+function refreshAll(){ loadTracks(); loadParty(); toast('🔄 Diperbarui!'); }
+function closeModal(e){
+  if(e&&e.target!==document.getElementById('confirmModal')) return;
+  document.getElementById('confirmModal').classList.remove('open');
+  pendingDelete=null;
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+let toastT;
+function toast(m){
+  const el=document.getElementById('toast');
+  el.textContent=m; el.classList.add('on'); clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('on'),3000);
+}
+
+// ── NOTIFIKASI ──
+async function sendAdminNotif(){
+  const title=document.getElementById('notifTitle').value.trim();
+  const body=document.getElementById('notifBody').value.trim();
+  const type=document.getElementById('notifType').value;
+  const target=document.getElementById('notifTarget').value.trim();
+  const result=document.getElementById('notifSendResult');
+  if(!title||!body){ result.style.color='var(--rd)'; result.textContent='⚠️ Judul dan isi wajib diisi'; return; }
+  result.style.color='var(--mt)'; result.textContent='⏳ Mengirim...';
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/notifications`,{method:'POST',headers:{...HDR,Prefer:'return=minimal'},
+      body:JSON.stringify({title,body,type,target_user:target||'all',created_at:new Date().toISOString()})});
+    if(!res.ok) throw new Error(await res.text()||'Gagal');
+    result.style.color='var(--g)'; result.textContent=`✅ Notifikasi "${title}" berhasil dikirim ke ${target||'semua user'}`;
+    document.getElementById('notifTitle').value=''; document.getElementById('notifBody').value='';
+    loadNotifHistory();
+  }catch(e){ result.style.color='var(--rd)'; result.textContent='❌ Error: '+e.message; }
+}
+async function loadNotifHistory(){
+  const el=document.getElementById('notifHistory'); if(!el) return;
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/notifications?order=created_at.desc&limit=20`,{headers:HDR});
+    const rows=await res.json();
+    if(!rows?.length){ el.innerHTML='<div style="text-align:center;color:var(--mt);font-size:.75rem;padding:20px">Belum ada notifikasi</div>'; return; }
+    const typeColor={info:'var(--b2)',success:'var(--g)',warning:'var(--yw)',promo:'var(--p2)'};
+    const typeIcon={info:'fa-info-circle',success:'fa-check-circle',warning:'fa-exclamation-triangle',promo:'fa-gift'};
+    el.innerHTML='';
+    rows.forEach(n=>{
+      const clr=typeColor[n.type]||'var(--g)'; const ico=typeIcon[n.type]||'fa-bell';
+      const time=new Date(n.created_at).toLocaleString('id-ID',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      const div=document.createElement('div'); div.style.cssText='padding:10px 12px;background:var(--s2);border-radius:10px;border:1px solid var(--bd)';
+      const hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:4px';
+      hdr.innerHTML=`<i class="fas ${ico}" style="color:${clr};font-size:.75rem"></i>`;
+      const ts=document.createElement('span'); ts.style.cssText='font-size:.78rem;font-weight:700;flex:1'; ts.textContent=n.title||'';
+      const tm=document.createElement('span'); tm.style.cssText='font-size:.6rem;color:var(--mt)'; tm.textContent=time;
+      hdr.appendChild(ts); hdr.appendChild(tm);
+      const bd=document.createElement('div'); bd.style.cssText='font-size:.7rem;color:var(--mt)'; bd.textContent=n.body||'';
+      const tg=document.createElement('div'); tg.style.cssText='font-size:.6rem;color:var(--mt);margin-top:4px'; tg.textContent='Target: '+(n.target_user||'all');
+      div.appendChild(hdr); div.appendChild(bd); div.appendChild(tg); el.appendChild(div);
+    });
+  }catch(e){ el.innerHTML=`<div style="color:var(--rd);font-size:.75rem;text-align:center;padding:10px">Error: ${escHtml(e.message)}</div>`; }
+}
+
+// ── VTUBER COVER ──
+function openVtuberUpload(){
+  document.getElementById('vtuberUploadForm').style.display='block';
+}
+function closeVtuberUpload(){
+  document.getElementById('vtuberUploadForm').style.display='none';
+  ['vtTitle','vtOrigArtist','vtVtuberName','vtAgency','vtYear','vtThumb','vtDesc',
+   'vtYoutubeUrl','vtSosmedYt','vtSosmedTw','vtSosmedIg','vtSosmedTt',
+   'vtDonSaweria','vtDonTrakteer','vtDonSociabuzz'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('vtUploadResult').textContent='';
+  document.getElementById('vtCopyrightPreview').style.display='none';
+  document.getElementById('ytFormPreview').style.display='none';
+  document.getElementById('ytFormFrame').src='';
+  document.getElementById('ytStatus').textContent='';
+}
+
+// Dipanggil setiap kali user mengetik di input YouTube
+function onYtInputChange(){
+  const url=document.getElementById('vtYoutubeUrl').value.trim();
+  const preview=document.getElementById('ytFormPreview');
+  const frame=document.getElementById('ytFormFrame');
+  const status=document.getElementById('ytStatus');
+  const ytId=extractYoutubeId(url);
+  if(!url){ preview.style.display='none'; frame.src=''; status.textContent=''; return; }
+  if(ytId){
+    status.innerHTML='<i class="fas fa-check-circle" style="color:var(--g)"></i>';
+    frame.src=`https://www.youtube.com/embed/${ytId}?rel=0`;
+    preview.style.display='block';
+  } else {
+    status.innerHTML='<i class="fas fa-times-circle" style="color:var(--rd)"></i>';
+    preview.style.display='none';
+    frame.src='';
+  }
+}
+
+function updateCopyrightPreview(){
+  const vtuber=document.getElementById('vtVtuberName').value.trim();
+  const agency=document.getElementById('vtAgency').value.trim();
+  const preview=document.getElementById('vtCopyrightPreview');
+  const textEl=document.getElementById('vtCopyrightText');
+  if(vtuber||agency){
+    textEl.textContent=`Seluruh hak cipta lagu dan karakter ini adalah milik © ${agency||'agensi terkait'}. Halaman ini dibuat murni sebagai arsip non-komersial untuk mengenang karya ${vtuber||'VTuber ini'}.`;
+    preview.style.display='block';
+  } else { preview.style.display='none'; }
+}
+
+async function submitVtuberUpload(){
+  const title      = document.getElementById('vtTitle').value.trim();
+  const origArtist = document.getElementById('vtOrigArtist').value.trim();
+  const vtuberName = document.getElementById('vtVtuberName').value.trim();
+  const agency     = document.getElementById('vtAgency').value.trim();
+  const youtubeUrl = document.getElementById('vtYoutubeUrl').value.trim();
+  const thumb      = document.getElementById('vtThumb').value.trim();
+  const year       = document.getElementById('vtYear').value.trim();
+  const desc       = document.getElementById('vtDesc').value.trim();
+  const sosmedYt   = document.getElementById('vtSosmedYt').value.trim();
+  const sosmedTw   = document.getElementById('vtSosmedTw').value.trim();
+  const sosmedIg   = document.getElementById('vtSosmedIg').value.trim();
+  const sosmedTt   = document.getElementById('vtSosmedTt').value.trim();
+  const donSaweria   = document.getElementById('vtDonSaweria').value.trim();
+  const donTrakteer  = document.getElementById('vtDonTrakteer').value.trim();
+  const donSociabuzz = document.getElementById('vtDonSociabuzz').value.trim();
+
+  const result=document.getElementById('vtUploadResult');
+  const btn=document.getElementById('vtSubmitBtn');
+
+  if(!title||!origArtist||!vtuberName||!agency){
+    result.style.color='var(--rd)';
+    result.textContent='⚠️ Judul, artis asli, nama VTuber, dan agensi wajib diisi.'; return;
+  }
+  if(!youtubeUrl){
+    result.style.color='var(--rd)';
+    result.textContent='⚠️ Link YouTube wajib diisi.'; return;
+  }
+  const ytId=extractYoutubeId(youtubeUrl);
+  if(!ytId){
+    result.style.color='var(--rd)';
+    result.textContent='⚠️ Link YouTube tidak valid. Gunakan format youtube.com/watch?v=... atau youtu.be/...'; return;
+  }
+
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Menyimpan...';
+  result.textContent='';
+
+  try{
+    const row={
+      title, original_artist:origArtist, vtuber_name:vtuberName, agency,
+      thumbnail:     thumb||null,
+      cover_year:    year?parseInt(year):null,
+      description:   desc||null,
+      copyright_text:`Seluruh hak cipta lagu dan karakter ini adalah milik © ${agency}. Halaman ini dibuat murni sebagai arsip non-komersial untuk mengenang karya ${vtuberName}.`,
+      youtube_url:   youtubeUrl,
+      youtube_id:    ytId,
+      sosmed_youtube:   sosmedYt||null,
+      sosmed_twitter:   sosmedTw||null,
+      sosmed_instagram: sosmedIg||null,
+      sosmed_tiktok:    sosmedTt||null,
+      donasi_saweria:   donSaweria||null,
+      donasi_trakteer:  donTrakteer||null,
+      donasi_sociabuzz: donSociabuzz||null,
+      uploaded_by: adminSess?.nama||'Admin',
+      created_at:  new Date().toISOString(),
+    };
+    const res=await fetch(`${SB_URL}/rest/v1/vtuber_covers`,{method:'POST',headers:{...HDR,Prefer:'return=minimal'},body:JSON.stringify(row)});
+    if(!res.ok){ const e=await res.text(); throw new Error(e); }
+    result.style.color='var(--g)';
+    result.textContent=`✅ "${title}" cover oleh ${vtuberName} berhasil disimpan!`;
+    toast('⭐ VTuber cover ditambahkan!');
+    setTimeout(()=>{ closeVtuberUpload(); loadVtuberCovers(); },1200);
+  }catch(e){ result.style.color='var(--rd)'; result.textContent='❌ Error: '+e.message; }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-save"></i> Simpan ke Arsip';
+}
+
+async function loadVtuberCovers(){
+  document.getElementById('vtuberList').innerHTML='<div class="empty"><i class="fas fa-circle-notch spin"></i>Memuat...</div>';
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/vtuber_covers?order=created_at.desc&limit=100`,{headers:HDR});
+    allVtuberCovers=await res.json();
+    renderVtuberCovers(allVtuberCovers);
+    document.getElementById('vtuberBadge').textContent=Array.isArray(allVtuberCovers)?allVtuberCovers.length:'–';
+  }catch(e){
+    document.getElementById('vtuberList').innerHTML=`<div class="empty"><i class="fas fa-exclamation-triangle"></i>${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderVtuberCovers(covers){
+  const el=document.getElementById('vtuberList');
+  if(!Array.isArray(covers)||!covers.length){
+    el.innerHTML='<div class="empty"><i class="fas fa-star"></i>Belum ada cover VTuber.</div>'; return;
+  }
+  el.innerHTML='';
+  // Header
+  const head=document.createElement('div');
+  head.className='tbl-item tbl-head';
+  head.style.cssText='display:grid;grid-template-columns:40px 1fr 140px auto;gap:10px;align-items:center';
+  head.innerHTML='<div></div><div>Lagu Cover</div><div>VTuber / Agensi</div><div>Aksi</div>';
+  el.appendChild(head);
+
+  covers.forEach(c=>{
+    const ytId=c.youtube_id||extractYoutubeId(c.youtube_url);
+
+    // ── Main row ──
+    const row=document.createElement('div');
+    row.className='tbl-item';
+    row.style.cssText='display:grid;grid-template-columns:40px 1fr 140px auto;gap:10px;align-items:center;cursor:pointer';
+
+    // Thumbnail — pakai YouTube thumbnail kalau tidak ada custom thumb
+    const th=document.createElement('div'); th.className='tbl-thumb';
+    const img=document.createElement('img');
+    img.src = c.thumbnail || (ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : PH_VT);
+    img.loading='lazy'; img.onerror=function(){ this.src=PH_VT; }; th.appendChild(img);
+
+    // Info
+    const info=document.createElement('div'); info.className='tbl-info';
+    const ti=document.createElement('div'); ti.className='tbl-title'; ti.textContent=c.title||'–';
+    const me=document.createElement('div'); me.className='tbl-meta'; me.textContent='orig. '+(c.original_artist||'–')+(c.cover_year?' · '+c.cover_year:'');
+
+    // Mini badges
+    const badges=document.createElement('div'); badges.style.cssText='display:flex;gap:4px;margin-top:4px;flex-wrap:wrap';
+    if(ytId){ const b=document.createElement('span'); b.className='tbl-badge'; b.style.cssText='background:rgba(255,0,0,.12);color:#ff4444;border:1px solid rgba(255,0,0,.2)'; b.innerHTML='<i class="fab fa-youtube"></i> YT Embed'; badges.appendChild(b); }
+    if(c.sosmed_youtube||c.sosmed_twitter||c.sosmed_instagram||c.sosmed_tiktok){ const b=document.createElement('span'); b.className='tbl-badge'; b.style.cssText='background:rgba(106,171,255,.12);color:var(--b2);border:1px solid rgba(106,171,255,.2)'; b.innerHTML='<i class="fas fa-share-alt"></i> Sosmed'; badges.appendChild(b); }
+    if(c.donasi_saweria||c.donasi_trakteer||c.donasi_sociabuzz){ const b=document.createElement('span'); b.className='tbl-badge'; b.style.cssText='background:rgba(255,167,38,.12);color:var(--yw);border:1px solid rgba(255,167,38,.2)'; b.innerHTML='<i class="fas fa-heart"></i> Donasi'; badges.appendChild(b); }
+    info.appendChild(ti); info.appendChild(me); info.appendChild(badges);
+
+    // VTuber info
+    const vtI=document.createElement('div');
+    const vtN=document.createElement('div'); vtN.style.cssText='font-size:.78rem;font-weight:600;color:var(--p2)'; vtN.textContent=c.vtuber_name||'–';
+    const vtA=document.createElement('div'); vtA.style.cssText='font-size:.65rem;color:var(--mt)'; vtA.textContent=c.agency||'–';
+    vtI.appendChild(vtN); vtI.appendChild(vtA);
+
+    // Actions
+    const ac=document.createElement('div'); ac.className='tbl-actions';
+    const detailId='vt-det-'+c.id;
+
+    // Tombol play YouTube — buka embed di detail row
+    if(ytId){
+      const pb=document.createElement('button'); pb.className='act-btn play'; pb.title='Putar di YouTube Embed';
+      pb.innerHTML='<i class="fab fa-youtube"></i>';
+      pb.addEventListener('click',e=>{ e.stopPropagation(); toggleVtDetail(detailId, expandBtn, true); });
+      ac.appendChild(pb);
+    }
+
+    // Expand/collapse
+    const expandBtn=document.createElement('button'); expandBtn.className='act-btn'; expandBtn.title='Detail';
+    expandBtn.innerHTML='<i class="fas fa-chevron-down"></i>';
+    expandBtn.addEventListener('click',e=>{ e.stopPropagation(); toggleVtDetail(detailId, expandBtn); });
+    ac.appendChild(expandBtn);
+
+    // Delete
+    const db=document.createElement('button'); db.className='act-btn del'; db.title='Hapus'; db.innerHTML='<i class="fas fa-trash-alt"></i>';
+    db.addEventListener('click',e=>{ e.stopPropagation(); confirmDeleteVtuber(c.id,(c.title||'')+' – '+(c.vtuber_name||'')); });
+    ac.appendChild(db);
+
+    row.appendChild(th); row.appendChild(info); row.appendChild(vtI); row.appendChild(ac);
+    row.addEventListener('click',()=>toggleVtDetail(detailId, expandBtn));
+
+    // ── Detail row ──
+    const det=document.createElement('div'); det.className='vt-row-detail'; det.id=detailId;
+
+    // YouTube embed (lazy — iframe hanya dibuat saat expand)
+    if(ytId){
+      const ytSec=document.createElement('div'); ytSec.style.marginBottom='12px';
+      const ytLbl=document.createElement('div'); ytLbl.style.cssText='font-size:.65rem;color:var(--mt);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px';
+      ytLbl.innerHTML='<i class="fab fa-youtube" style="color:#ff4444"></i> Video Cover';
+      const ytWrap=document.createElement('div'); ytWrap.className='yt-embed-wrap';
+      // Simpan ytId sebagai data attribute — iframe baru dibuat saat pertama kali expand
+      ytWrap.dataset.ytid=ytId;
+      ytWrap.innerHTML='<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--mt);font-size:.75rem"><i class="fas fa-circle-notch spin" style="margin-right:6px"></i>Klik play untuk memuat video</div>';
+      ytSec.appendChild(ytLbl); ytSec.appendChild(ytWrap); det.appendChild(ytSec);
+    }
+
+    // Copyright
+    const cp=document.createElement('div'); cp.style.cssText='font-size:.7rem;color:var(--mt);line-height:1.6;padding:8px 10px;background:rgba(155,127,232,.05);border-left:2px solid rgba(155,127,232,.3);border-radius:0 6px 6px 0;margin-bottom:10px';
+    cp.innerHTML='<i class="fas fa-shield-alt" style="color:var(--p2);margin-right:5px"></i>';
+    cp.appendChild(document.createTextNode(c.copyright_text||''));
+    det.appendChild(cp);
+
+    // Sosmed + Donasi grid
+    const grid=document.createElement('div'); grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px';
+
+    // Sosmed
+    const sosDiv=document.createElement('div');
+    const sosLbl=document.createElement('div'); sosLbl.style.cssText='font-size:.65rem;color:var(--mt);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'; sosLbl.innerHTML='<i class="fas fa-share-alt"></i> Sosial Media';
+    const sosChips=document.createElement('div'); sosChips.className='sosmed-chips';
+    const sosLinks=[
+      {url:c.sosmed_youtube,cls:'chip-yt',icon:'fab fa-youtube',label:'YouTube'},
+      {url:c.sosmed_twitter,cls:'chip-tw',icon:'fab fa-twitter',label:'Twitter'},
+      {url:c.sosmed_instagram,cls:'chip-ig',icon:'fab fa-instagram',label:'Instagram'},
+      {url:c.sosmed_tiktok,cls:'chip-tt',icon:'fab fa-tiktok',label:'TikTok'},
+    ];
+    let hasSos=false;
+    sosLinks.forEach(s=>{ if(!s.url) return; hasSos=true; const a=document.createElement('a'); a.href=s.url; a.target='_blank'; a.rel='noopener noreferrer'; a.className='sosmed-chip '+s.cls; a.innerHTML=`<i class="${s.icon}"></i> ${s.label}`; sosChips.appendChild(a); });
+    if(!hasSos){ sosChips.innerHTML='<span style="font-size:.68rem;color:var(--mt)">–</span>'; }
+    sosDiv.appendChild(sosLbl); sosDiv.appendChild(sosChips);
+
+    // Donasi
+    const donDiv=document.createElement('div');
+    const donLbl=document.createElement('div'); donLbl.style.cssText='font-size:.65rem;color:var(--mt);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'; donLbl.innerHTML='<i class="fas fa-hand-holding-heart"></i> Donasi / Support';
+    const donChips=document.createElement('div'); donChips.className='sosmed-chips';
+    const donLinks=[
+      {url:c.donasi_saweria,cls:'chip-saw',icon:'fas fa-mug-hot',label:'Saweria'},
+      {url:c.donasi_trakteer,cls:'chip-trk',icon:'fas fa-heart',label:'Trakteer'},
+      {url:c.donasi_sociabuzz,cls:'chip-soc',icon:'fas fa-users',label:'Sociabuzz'},
+    ];
+    let hasDon=false;
+    donLinks.forEach(d=>{ if(!d.url) return; hasDon=true; const a=document.createElement('a'); a.href=d.url; a.target='_blank'; a.rel='noopener noreferrer'; a.className='sosmed-chip '+d.cls; a.innerHTML=`<i class="${d.icon}"></i> ${d.label}`; donChips.appendChild(a); });
+    if(!hasDon){ donChips.innerHTML='<span style="font-size:.68rem;color:var(--mt)">–</span>'; }
+    donDiv.appendChild(donLbl); donDiv.appendChild(donChips);
+
+    grid.appendChild(sosDiv); grid.appendChild(donDiv); det.appendChild(grid);
+
+    // Deskripsi
+    if(c.description){
+      const ds=document.createElement('div'); ds.style.cssText='font-size:.72rem;color:var(--mt);margin-top:10px;font-style:italic'; ds.textContent=c.description; det.appendChild(ds);
+    }
+
+    el.appendChild(row);
+    el.appendChild(det);
+  });
+}
+
+// Toggle detail row + lazy load iframe
+function toggleVtDetail(detailId, expandBtn, forceOpen=false){
+  const det=document.getElementById(detailId);
+  const willOpen = forceOpen ? true : !det.classList.contains('open');
+  det.classList.toggle('open', willOpen);
+  expandBtn.innerHTML = willOpen ? '<i class="fas fa-chevron-up"></i>' : '<i class="fas fa-chevron-down"></i>';
+
+  // Lazy load iframe YouTube saat pertama kali dibuka
+  if(willOpen){
+    const ytWrap=det.querySelector('.yt-embed-wrap[data-ytid]');
+    if(ytWrap && !ytWrap.querySelector('iframe')){
+      const ytId=ytWrap.dataset.ytid;
+      ytWrap.innerHTML='';
+      const iframe=document.createElement('iframe');
+      iframe.src=`https://www.youtube.com/embed/${ytId}?rel=0&autoplay=1`;
+      iframe.setAttribute('allowfullscreen','');
+      iframe.setAttribute('allow','autoplay; encrypted-media');
+      ytWrap.appendChild(iframe);
+    }
+  }
+}
+
+function filterVtuber(){
+  const q=document.getElementById('vtuberSearch').value.toLowerCase();
+  renderVtuberCovers(q?allVtuberCovers.filter(c=>
+    (c.title||'').toLowerCase().includes(q)||
+    (c.vtuber_name||'').toLowerCase().includes(q)||
+    (c.agency||'').toLowerCase().includes(q)||
+    (c.original_artist||'').toLowerCase().includes(q)
+  ):allVtuberCovers);
+}
+
+function confirmDeleteVtuber(id,label){
+  pendingDelete={type:'vtuber',id};
+  document.getElementById('modalMsg').textContent='Hapus cover ini dari arsip?';
+  document.getElementById('modalTrack').textContent=label;
+  document.getElementById('modalConfirmBtn').onclick=doDeleteVtuber;
+  document.getElementById('confirmModal').classList.add('open');
+}
+async function doDeleteVtuber(){
+  if(!pendingDelete) return;
+  const btn=document.getElementById('modalConfirmBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i>';
+  try{ await sb_del('vtuber_covers',`id=eq.${encodeURIComponent(pendingDelete.id)}`); toast('🗑️ Cover dihapus!'); closeModal(); loadVtuberCovers(); }
+  catch(e){ toast('❌ Gagal: '+e.message); }
+  btn.disabled=false; btn.innerHTML='<i class="fas fa-trash-alt"></i> Hapus';
+}
+
+// ── INIT ──
+loadTracks();
+loadParty();
+</script>
+</body>
+</html>

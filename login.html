@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagaska Music — Login</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- ★ AUTH DATABASE — dari _lib/db.js (obfuscated) ★ -->
+<script src="_lib/db.js"></script>
+
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --g:#1DB954;--g2:#1ed760;--bg:#06060f;
+  --s1:#0d0d1c;--s2:#12122a;--s3:#181830;--s4:#202040;
+  --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --tx:#eeeeff;--mt:#7878a8;--rd:#ff4d6d;--acc:#7c5cbf;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx)}
+body{overflow:hidden}
+
+/* BG */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+.bg-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(29,185,84,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(29,185,84,.035) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%);
+}
+.orb{position:absolute;border-radius:50%;filter:blur(110px);pointer-events:none}
+.o1{width:600px;height:600px;background:rgba(29,185,84,.11);top:-220px;left:-180px;animation:fl 20s ease-in-out infinite}
+.o2{width:500px;height:500px;background:rgba(124,92,191,.08);bottom:-160px;right:-160px;animation:fl 26s ease-in-out infinite reverse}
+.o3{width:280px;height:280px;background:rgba(30,215,96,.06);top:50%;left:55%;transform:translate(-50%,-50%);animation:fl 14s ease-in-out infinite 4s}
+@keyframes fl{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,-50px) scale(1.1)}66%{transform:translate(-40px,40px) scale(.9)}}
+
+/* PAGE */
+.page{
+  position:relative;z-index:1;height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+
+/* CARD */
+.card{
+  width:100%;max-width:460px;
+  background:rgba(13,13,28,.92);
+  border:1px solid var(--bd2);border-radius:28px;
+  padding:42px 38px 34px;
+  box-shadow:0 40px 80px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter:blur(24px);
+  animation:cardIn .5s cubic-bezier(.16,1,.3,1);
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* BRAND */
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:34px}
+.brand-ico{
+  width:50px;height:50px;border-radius:16px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--g),var(--g2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.45rem;color:#000;box-shadow:0 0 28px rgba(29,185,84,.45);
+}
+.brand-name{
+  font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;
+  background:linear-gradient(90deg,#fff 20%,var(--g2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.brand-sub{font-size:.62rem;color:var(--mt);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px}
+
+/* TABS */
+.tabs{display:flex;gap:3px;background:var(--s2);border-radius:13px;padding:3px;margin-bottom:26px;border:1px solid var(--bd)}
+.tab{
+  flex:1;padding:10px;border-radius:10px;border:none;
+  background:transparent;color:var(--mt);font-size:.83rem;font-weight:600;
+  cursor:pointer;transition:all .22s;font-family:inherit;
+}
+.tab.on{background:var(--s4);color:var(--tx);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+
+/* FORM */
+.form{display:flex;flex-direction:column;gap:13px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:.7rem;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:1px}
+.fg input,.fg select{
+  padding:12px 15px;border-radius:11px;
+  border:1px solid var(--bd);background:var(--s2);
+  color:var(--tx);font-size:.9rem;font-family:inherit;outline:none;transition:all .22s;
+}
+.fg input:focus,.fg select:focus{
+  border-color:rgba(29,185,84,.6);
+  box-shadow:0 0 0 3px rgba(29,185,84,.1);
+  background:var(--s3);
+}
+.fg select option{background:var(--s3)}
+.fg input::placeholder{color:var(--mt)}
+
+/* BTN */
+.btn{
+  padding:13px;border-radius:12px;border:none;cursor:pointer;
+  font-size:.92rem;font-weight:700;font-family:inherit;
+  background:linear-gradient(135deg,var(--g),var(--g2));
+  color:#000;transition:all .22s;margin-top:4px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(29,185,84,.4)}
+.btn:active{transform:translateY(0)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+.spin{animation:sp .65s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* MSG */
+.msg{font-size:.8rem;text-align:center;min-height:18px;font-weight:600;margin-top:2px}
+.msg.err{color:var(--rd)}.msg.ok{color:var(--g)}.msg.warn{color:#ffa726}
+
+/* HINT */
+.hint{
+  background:rgba(29,185,84,.05);border:1px solid rgba(29,185,84,.14);
+  border-radius:11px;padding:11px 13px;margin-top:2px;
+}
+.hint-row{display:flex;align-items:flex-start;gap:8px;font-size:.76rem;color:var(--mt);line-height:1.6;margin-bottom:3px}
+.hint-row:last-child{margin-bottom:0}
+.hint-row i{color:var(--g);font-size:.72rem;margin-top:3px;flex-shrink:0}
+.hint-row strong{color:var(--tx)}
+
+/* ALERT WARN */
+.alert-warn{
+  background:rgba(255,167,38,.07);border:1px solid rgba(255,167,38,.25);
+  border-radius:11px;padding:11px 13px;margin-top:2px;
+}
+.alert-warn .hint-row i{color:#ffa726}
+
+/* COOLDOWN BAR */
+.cooldown-wrap{display:none;flex-direction:column;gap:6px;margin-top:2px}
+.cooldown-wrap.show{display:flex}
+.cooldown-label{font-size:.74rem;color:#ffa726;font-weight:600;text-align:center}
+.cooldown-bar-bg{height:4px;background:rgba(255,167,38,.15);border-radius:4px;overflow:hidden}
+.cooldown-bar-fill{height:100%;background:#ffa726;border-radius:4px;transition:width .5s linear}
+
+/* FOOTER */
+.foot{margin-top:22px;text-align:center;font-size:.74rem;color:var(--mt)}
+.foot a{color:var(--g);text-decoration:none;font-weight:600}
+.foot a:hover{text-decoration:underline}
+
+@media(max-width:500px){
+  .card{padding:28px 20px 24px;border-radius:20px}
+  body{overflow:auto}
+  .page{align-items:flex-start;padding-top:30px}
+}
+</style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-grid"></div>
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<div class="page">
+  <div class="card">
+
+    <div class="brand">
+      <div class="brand-ico"><i class="fab fa-spotify"></i></div>
+      <div>
+        <div class="brand-name">Pagaska Music</div>
+        <div class="brand-sub">Member Portal · v2</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" id="tabLogin"    onclick="switchTab('login')">Masuk</button>
+      <button class="tab"    id="tabRegister" onclick="switchTab('register')">Daftar Baru</button>
+    </div>
+
+    <!-- ── LOGIN FORM ── -->
+    <div id="formLogin" class="form">
+      <div class="fg">
+        <label>Nama Lengkap</label>
+        <input type="text" id="lNama" placeholder="Ketik nama lengkap kamu..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="fg">
+        <label>Jabatan</label>
+        <select id="lJabatan">
+          <option value="">– Pilih Jabatan –</option>
+          <option>Ketua Umum</option>
+          <option>Wakil Ketua Umum</option>
+          <option>Wakil Ketua</option>
+          <option>Sekretaris</option>
+          <option>Bendahara</option>
+          <option>DTP</option>
+          <option>Koor GK3</option>
+          <option>GK3</option>
+          <option>Koor Disarda</option>
+          <option>Disarda</option>
+          <option>Koor Infokom</option>
+          <option>Infokom</option>
+          <option>Anggota</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Generasi</label>
+        <select id="lGenerasi">
+          <option value="">– Pilih Generasi –</option>
+          <option value="1">Generasi 1</option>
+          <option value="2">Generasi 2</option>
+          <option value="3">Generasi 3</option>
+          <option value="4">Generasi 4</option>
+        </select>
+      </div>
+
+      <button class="btn" id="btnLogin" onclick="doLogin()">
+        <i class="fas fa-sign-in-alt"></i> Masuk
+      </button>
+      <div class="msg" id="msgLogin"></div>
+
+      <!-- Cooldown bar brute-force protection -->
+      <div class="cooldown-wrap" id="cooldownWrap">
+        <div class="cooldown-label" id="cooldownLabel">Tunggu sebentar...</div>
+        <div class="cooldown-bar-bg"><div class="cooldown-bar-fill" id="cooldownBar" style="width:100%"></div></div>
+      </div>
+
+      <div class="hint">
+        <div class="hint-row"><i class="fas fa-circle-info"></i><span><strong>Gen 1–3:</strong> Nama harus sesuai data Pagaska persis</span></div>
+        <div class="hint-row"><i class="fas fa-circle-info"></i><span><strong>Gen 4:</strong> Ketik nama + pilih "Anggota"</span></div>
+      </div>
+    </div>
+
+    <!-- ── REGISTER FORM ── -->
+    <div id="formRegister" class="form" style="display:none">
+      <div class="fg">
+        <label>Nama Lengkap</label>
+        <input type="text" id="rNama" placeholder="Nama lengkap kamu" spellcheck="false" autocomplete="off">
+      </div>
+      <div class="fg">
+        <label>Generasi</label>
+        <select id="rGenerasi">
+          <option value="">– Pilih Generasi –</option>
+          <option value="1">Generasi 1</option>
+          <option value="2">Generasi 2</option>
+          <option value="3">Generasi 3</option>
+          <option value="4">Generasi 4</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Jabatan</label>
+        <select id="rJabatan">
+          <option value="">– Pilih Jabatan –</option>
+          <option>Ketua Umum</option>
+          <option>Wakil Ketua Umum</option>
+          <option>Wakil Ketua</option>
+          <option>Sekretaris</option>
+          <option>Bendahara</option>
+          <option>Anggota</option>
+        </select>
+      </div>
+
+      <button class="btn" id="btnRegister" onclick="doRegister()">
+        <i class="fas fa-user-plus"></i> Daftar Sekarang
+      </button>
+      <div class="msg" id="msgRegister"></div>
+
+      <div class="hint">
+        <div class="hint-row"><i class="fas fa-shield-alt"></i><span>Untuk anggota <strong>yang belum ada</strong> di data Pagaska.</span></div>
+        <div class="hint-row"><i class="fas fa-info-circle"></i><span>Anggota Gen 1–3 yang sudah terdaftar cukup langsung <strong>Masuk</strong>.</span></div>
+        <div class="hint-row"><i class="fas fa-mobile-alt"></i><span>1 perangkat hanya bisa mendaftarkan <strong>1 akun baru</strong>.</span></div>
+      </div>
+    </div>
+
+    <div class="foot">
+      Pagaska Music &copy; 2025 &nbsp;·&nbsp; <a href="index.html">Langsung ke Player →</a>
+      &nbsp;·&nbsp; <a href="admin.html" style="color:var(--rd);opacity:.6;font-size:.65rem">Admin</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  PAGASKA MUSIC — login.html security layer
+//  db.js sudah di-load via <script src="_lib/db.js"> (obfuscated)
+//  Tersedia sebagai window.PAGASKA_DB
+// ══════════════════════════════════════════════════════════════
+const DB   = window.PAGASKA_DB;
+const SESS = 'pgsk_v2_session';
+
+// ══ BACKEND NOTIFY ══
+const NOTIFY_URL = 'https://verolyz-kingdom3.vercel.app/api/pagaska-notify';
+// ════════════════════
+
+// ══ STORAGE KEYS ══
+const KEY_FP        = 'pgsk_device_fp';      // device fingerprint
+const KEY_REG_DONE  = 'pgsk_reg_lock';       // "already registered from this device"
+const KEY_ATTEMPTS  = 'pgsk_login_attempts'; // brute-force counter
+const KEY_LOCKUNTIL = 'pgsk_lock_until';     // lockout expiry timestamp
+
+// ── Guard: kalau sudah login, langsung ke player ──────────────
+if (localStorage.getItem(SESS)) {
+  window.location.href = 'index.html';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  DEVICE FINGERPRINT
+//  Kombinasi beberapa sinyal browser — tidak perlu akurat 100%,
+//  cukup untuk mencegah pendaftaran ganda dari 1 HP.
+// ══════════════════════════════════════════════════════════════
+async function getDeviceFingerprint() {
+  // Kalau sudah pernah di-generate, pakai yang lama
+  const stored = localStorage.getItem(KEY_FP);
+  if (stored) return stored;
+
+  // Kumpulkan sinyal
+  const ua      = navigator.userAgent || '';
+  const lang    = navigator.language || '';
+  const tz      = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  const screen  = `${screen.width}x${screen.height}x${screen.colorDepth}`;
+  const cores   = navigator.hardwareConcurrency || 0;
+  const mem     = navigator.deviceMemory || 0;
+  const plugins = Array.from(navigator.plugins || []).map(p => p.name).join(',');
+
+  // Canvas fingerprint
+  let canvas = '';
+  try {
+    const cv  = document.createElement('canvas');
+    const ctx = cv.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#1DB954';
+    ctx.fillText('pagaska🎵', 2, 2);
+    canvas = cv.toDataURL().slice(-40); // ambil ujungnya saja
+  } catch(e) {}
+
+  const raw = [ua, lang, tz, screen, cores, mem, plugins, canvas].join('|');
+
+  // Hash sederhana (FNV-1a 32bit style)
+  let h = 2166136261;
+  for (let i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  const fp = h.toString(16).padStart(8, '0');
+
+  localStorage.setItem(KEY_FP, fp);
+  return fp;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BRUTE-FORCE PROTECTION (login)
+//  Max 5 percobaan gagal → cooldown 5 menit
+// ══════════════════════════════════════════════════════════════
+const MAX_ATTEMPTS  = 5;
+const COOLDOWN_MS   = 5 * 60 * 1000; // 5 menit
+
+let cooldownTimer = null;
+
+function getAttempts() { return parseInt(localStorage.getItem(KEY_ATTEMPTS) || '0'); }
+function getLockUntil(){ return parseInt(localStorage.getItem(KEY_LOCKUNTIL) || '0'); }
+
+function isLocked() {
+  const until = getLockUntil();
+  if (!until) return false;
+  if (Date.now() < until) return true;
+  // Sudah lewat — reset
+  localStorage.removeItem(KEY_LOCKUNTIL);
+  localStorage.removeItem(KEY_ATTEMPTS);
+  return false;
+}
+
+function recordFailedAttempt() {
+  const n = getAttempts() + 1;
+  localStorage.setItem(KEY_ATTEMPTS, n);
+  if (n >= MAX_ATTEMPTS) {
+    const until = Date.now() + COOLDOWN_MS;
+    localStorage.setItem(KEY_LOCKUNTIL, until);
+    startCooldownUI(until);
+  }
+}
+
+function resetAttempts() {
+  localStorage.removeItem(KEY_ATTEMPTS);
+  localStorage.removeItem(KEY_LOCKUNTIL);
+}
+
+function startCooldownUI(until) {
+  const wrap  = document.getElementById('cooldownWrap');
+  const label = document.getElementById('cooldownLabel');
+  const bar   = document.getElementById('cooldownBar');
+  const btn   = document.getElementById('btnLogin');
+
+  wrap.classList.add('show');
+  btn.disabled = true;
+
+  if (cooldownTimer) clearInterval(cooldownTimer);
+
+  cooldownTimer = setInterval(() => {
+    const remaining = until - Date.now();
+    if (remaining <= 0) {
+      clearInterval(cooldownTimer);
+      wrap.classList.remove('show');
+      btn.disabled = false;
+      setMsg('msgLogin', '', '');
+      resetAttempts();
+      return;
+    }
+    const secs = Math.ceil(remaining / 1000);
+    const pct  = (remaining / COOLDOWN_MS) * 100;
+    label.textContent = `Terlalu banyak percobaan gagal — coba lagi dalam ${secs}s`;
+    bar.style.width = pct + '%';
+  }, 500);
+}
+
+// Cek apakah sedang cooldown saat halaman dimuat
+(function checkCooldownOnLoad() {
+  if (isLocked()) {
+    startCooldownUI(getLockUntil());
+    setMsg('msgLogin', 'Terlalu banyak percobaan gagal.', 'err');
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════
+//  NOTIFIKASI — via Verolyz backend (bot token aman di env)
+// ══════════════════════════════════════════════════════════════
+async function kirimNotif(type, user, device) {
+  try {
+    const tz  = Intl.DateTimeFormat().resolvedOptions().timeZone || '-';
+    const now = new Date().toLocaleString('id-ID', { timeZone: tz, dateStyle: 'full', timeStyle: 'medium' });
+    await fetch(NOTIFY_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type,
+        nama:     user.nama,
+        jabatan:  user.jabatan  || '-',
+        generasi: user.generasi || '-',
+        device:   device        || '-',
+        waktu:    now,
+      }),
+    });
+  } catch(e) { /* silent — tidak ganggu user */ }
+}
+
+async function kirimInfoLogin(user) {
+  const fp = await getDeviceFingerprint();
+  kirimNotif('login', user, fp); // tidak perlu await — fire & forget
+}
+
+async function kirimInfoRegister(user, fp) {
+  kirimNotif('register', user, fp);
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function switchTab(t) {
+  document.getElementById('tabLogin').classList.toggle('on', t === 'login');
+  document.getElementById('tabRegister').classList.toggle('on', t === 'register');
+  document.getElementById('formLogin').style.display    = t === 'login'    ? 'flex' : 'none';
+  document.getElementById('formRegister').style.display = t === 'register' ? 'flex' : 'none';
+  document.getElementById('msgLogin').textContent    = '';
+  document.getElementById('msgRegister').textContent = '';
+}
+
+function setMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+
+function setBusy(id, busy, ico, label) {
+  const b = document.getElementById(id);
+  b.disabled = busy;
+  b.innerHTML = busy
+    ? `<i class="fas fa-circle-notch spin"></i> ${label}...`
+    : `<i class="${ico}"></i> ${label}`;
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function doLogin() {
+  if (isLocked()) {
+    setMsg('msgLogin', 'Tunggu cooldown selesai sebelum mencoba lagi.', 'err');
+    return;
+  }
+
+  const nama     = document.getElementById('lNama').value.trim();
+  const jabatan  = document.getElementById('lJabatan').value;
+  const generasi = document.getElementById('lGenerasi').value;
+
+  if (!nama || !jabatan || !generasi) {
+    setMsg('msgLogin', 'Lengkapi semua kolom!', 'err');
+    return;
+  }
+
+  setBusy('btnLogin', true, '', 'Memeriksa');
+
+  setTimeout(() => {
+    const user = DB.findUserByCredentials(nama, jabatan, generasi);
+    setBusy('btnLogin', false, 'fas fa-sign-in-alt', 'Masuk');
+
+    if (!user) {
+      recordFailedAttempt();
+      const remaining = MAX_ATTEMPTS - getAttempts();
+      if (remaining > 0) {
+        setMsg('msgLogin', `Data tidak ditemukan. Sisa percobaan: ${remaining}.`, 'err');
+      }
+      return;
+    }
+
+    // Login sukses — reset counter
+    resetAttempts();
+    localStorage.setItem(SESS, JSON.stringify(user));
+    setMsg('msgLogin', `Selamat datang, ${user.nama.split(' ')[0]}! 🎵`, 'ok');
+    kirimInfoLogin(user); // silent
+    setTimeout(() => { window.location.href = 'index.html'; }, 600);
+  }, 300);
+}
+
+// ── REGISTER ─────────────────────────────────────────────────
+async function doRegister() {
+  const nama     = document.getElementById('rNama').value.trim();
+  const generasi = document.getElementById('rGenerasi').value;
+  const jabatan  = document.getElementById('rJabatan').value;
+
+  if (!nama || !generasi || !jabatan) {
+    setMsg('msgRegister', 'Lengkapi semua kolom!', 'err');
+    return;
+  }
+
+  // ── Cek device fingerprint lock ────────────────────────────
+  const fp = await getDeviceFingerprint();
+  const regDone = JSON.parse(localStorage.getItem(KEY_REG_DONE) || 'null');
+
+  if (regDone) {
+    // Device ini sudah pernah daftar
+    setMsg('msgRegister', `Perangkat ini sudah digunakan untuk mendaftar atas nama "${regDone.nama}". 1 perangkat = 1 akun.`, 'err');
+    return;
+  }
+
+  setBusy('btnRegister', true, '', 'Mendaftarkan');
+
+  setTimeout(async () => {
+    const result = DB.registerUser(nama, jabatan, generasi);
+    setBusy('btnRegister', false, 'fas fa-user-plus', 'Daftar Sekarang');
+
+    if (!result.ok) {
+      setMsg('msgRegister', result.message, 'err');
+      return;
+    }
+
+    // Kunci device ini
+    localStorage.setItem(KEY_REG_DONE, JSON.stringify({ nama, jabatan, fp, at: new Date().toISOString() }));
+
+    kirimInfoRegister(result.user, fp); // silent
+
+    setMsg('msgRegister', 'Berhasil terdaftar! Silakan masuk.', 'ok');
+    setTimeout(() => {
+      switchTab('login');
+      document.getElementById('lNama').value     = nama;
+      document.getElementById('lJabatan').value  = jabatan;
+      document.getElementById('lGenerasi').value = generasi;
+    }, 800);
+  }, 300);
+}
+
+// ── Enter key ─────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const loginVisible = document.getElementById('formLogin').style.display !== 'none';
+  loginVisible ? doLogin() : doRegister();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagaska Admin</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#07071a;--s2:#141438;--s3:#1a1a44;--bd:rgba(255,255,255,.1);--tx:#eeeeff;--mt:#8888bb;--rd:#ff4d6d;--g:#1DB954;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:380px;background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:36px 28px;box-shadow:0 24px 60px rgba(0,0,0,.7)}
+.brand{text-align:center;margin-bottom:28px}
+.brand-ico{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#ff4d6d,#c9184a);display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#fff;margin:0 auto 12px;box-shadow:0 0 24px rgba(255,77,109,.4)}
+.brand-title{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800}
+.brand-sub{font-size:.72rem;color:var(--mt);margin-top:3px;letter-spacing:2px;text-transform:uppercase}
+.fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.fg label{font-size:.7rem;font-weight:700;color:var(--mt);text-transform:uppercase;letter-spacing:1px}
+.fg input{padding:12px 14px;border-radius:10px;border:1px solid var(--bd);background:rgba(255,255,255,.05);color:var(--tx);font-size:.9rem;font-family:inherit;outline:none;transition:border-color .2s}
+.fg input:focus{border-color:var(--rd);box-shadow:0 0 0 3px rgba(255,77,109,.1)}
+.btn{width:100%;padding:13px;border-radius:11px;border:none;background:linear-gradient(135deg,#ff4d6d,#c9184a);color:#fff;font-size:.9rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,77,109,.4)}
+.btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.msg{font-size:.78rem;text-align:center;min-height:18px;font-weight:600;margin-top:8px;color:var(--rd)}
+.msg.ok{color:var(--g)}
+.back{display:block;text-align:center;margin-top:16px;font-size:.75rem;color:var(--mt);text-decoration:none;transition:color .2s}
+.back:hover{color:var(--tx)}
+.spin{animation:sp .65s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <div class="brand-ico"><i class="fas fa-shield-halved"></i></div>
+    <div class="brand-title">Admin Panel</div>
+    <div class="brand-sub">Pagaska Music</div>
+  </div>
+  <div class="fg">
+    <label>Username</label>
+    <input type="text" id="uname" placeholder="admin" autocomplete="off">
+  </div>
+  <div class="fg">
+    <label>Password</label>
+    <input type="password" id="pass" placeholder="••••••••">
+  </div>
+  <button class="btn" id="btn" onclick="doLogin()">
+    <i class="fas fa-sign-in-alt"></i> Masuk sebagai Admin
+  </button>
+  <div class="msg" id="msg"></div>
+  <a class="back" href="index.html">← Kembali ke Player</a>
+</div>
+
+<script>
+// Kredensial admin — ganti sesuai keinginan
+const ADMINS = [
+  { username: 'admin', password: 'pagaska', nama: 'Admin' },
+  // Tambah admin lain di sini jika perlu:
+  // { username: 'rizky', password: 'password_rizky', nama: 'Rizky Indra' },
+];
+const ADMIN_SESS_KEY = 'pgsk_admin_session';
+const MAIN_SESS_KEY  = 'pgsk_v2_session';
+
+// Kalau sudah login admin, langsung redirect
+if(localStorage.getItem(ADMIN_SESS_KEY)) {
+  window.location.href = 'admin_dashboard.html';
+}
+
+function doLogin(){
+  const uname = document.getElementById('uname').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const btn   = document.getElementById('btn');
+  const msg   = document.getElementById('msg');
+
+  if(!uname || !pass){ msg.textContent = 'Isi username dan password!'; return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch spin"></i> Memeriksa...';
+
+  setTimeout(() => {
+    const admin = ADMINS.find(a => a.username === uname && a.password === pass);
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk sebagai Admin';
+
+    if(!admin){
+      msg.className = 'msg';
+      msg.textContent = 'Username atau password salah!';
+      document.getElementById('pass').value = '';
+      return;
+    }
+
+    // Simpan admin session
+    const adminSession = {
+      nama: admin.nama,
+      jabatan: 'Admin',
+      generasi: 0,
+      isAdmin: true,
+      loginAt: new Date().toISOString()
+    };
+    localStorage.setItem(ADMIN_SESS_KEY, JSON.stringify(adminSession));
+    localStorage.setItem('pgsk_admin', admin.password); // backward compat dengan kode lama
+    // Set juga sebagai user session supaya bisa akses fitur player
+    localStorage.setItem(MAIN_SESS_KEY, JSON.stringify(adminSession));
+
+    msg.className = 'msg ok';
+    msg.textContent = `Selamat datang, ${admin.nama}! 🔐`;
+    setTimeout(() => window.location.href = 'admin_dashboard.html', 700);
+  }, 400);
+}
+
+document.addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

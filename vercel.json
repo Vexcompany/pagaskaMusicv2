@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "name": "pagaska-music-frontend",
+  "framework": null,
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/",         "destination": "/dashboard.html" },
+    { "source": "/dashboard","destination": "/dashboard.html" },
+    { "source": "/welcome",  "destination": "/dashboard.html" },
+    { "source": "/beranda",  "destination": "/index.html" },
+    { "source": "/radio",    "destination": "/index.html" },
+    { "source": "/party",    "destination": "/index.html" },
+    { "source": "/chart",    "destination": "/index.html" },
+    { "source": "/karaoke",  "destination": "/index.html" },
+    { "source": "/chat",     "destination": "/index.html" },
+    { "source": "/wrapped",  "destination": "/index.html" },
+    { "source": "/capsule",  "destination": "/index.html" },
+    { "source": "/explore",  "destination": "/index.html" },
+    { "source": "/profil",   "destination": "/index.html" },
+    { "source": "/login",    "destination": "/login.html" },
+    { "source": "/admin",    "destination": "/admin.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options",        "value": "DENY" },
+        { "key": "Referrer-Policy",        "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache" },
+        { "key": "X-Robots-Tag",  "value": "noindex" }
+      ]
+    },
+    {
+      "source": "/favicon.ico",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
+      "source": "/icons/:file",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=2592000" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    }
+  ]
+}
