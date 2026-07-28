@@ -6,6 +6,131 @@ const VEROR_URL = 'https://vero-r.vercel.app';
 window.BACKEND_URL = VEROR_URL;
 
 // ══════════════════════════════════════════════════════════════════
+//  0. BACKGROUND PLAY ENGINE
+//  Tujuan: cegah IFrame YouTube mati saat tab di-minimize/layar mati
+//  Teknik:
+//    A) Wake Lock API — minta browser tidak matikan layar (Chrome 84+)
+//    B) AudioContext silent — bikin browser anggap tab ini "audio aktif"
+//    C) visibilitychange — resume IFrame saat tab kembali terlihat
+//    D) _updPos() — update mediaSession position state (butuh oleh spec)
+// ══════════════════════════════════════════════════════════════════
+(function () {
+  // ── A. Wake Lock ─────────────────────────────────────────────────
+  let _wakeLock = null;
+
+  async function _acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+    } catch (e) {
+      console.warn('[bgPlay] wakeLock gagal:', e.message);
+    }
+  }
+
+  async function _releaseWakeLock() {
+    if (_wakeLock) { try { await _wakeLock.release(); } catch (_) {} _wakeLock = null; }
+  }
+
+  // Re-acquire setelah layar nyala kembali (spec: WakeLock auto-released saat visibility hidden)
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible' && _wakeLock === null) {
+      // Cek apakah IFrame sedang main
+      try {
+        if (window._ytPlayer && window._ytReady &&
+            window._ytPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+          await _acquireWakeLock();
+        }
+      } catch (_) {}
+    }
+  });
+
+  // ── B. AudioContext silent node ───────────────────────────────────
+  // Trik: oscillator volume=0 bikin browser anggap ada audio aktif,
+  // sehingga IFrame tidak di-suspend saat tab background.
+  let _audioCtx     = null;
+  let _silentSource = null;
+
+  function _startSilentAudio() {
+    if (_audioCtx) return;
+    try {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = _audioCtx.createOscillator();
+      const gain       = _audioCtx.createGain();
+      gain.gain.value  = 0.001; // hampir 0, tidak terdengar, tapi tidak 0 agar tidak di-GC
+      oscillator.connect(gain);
+      gain.connect(_audioCtx.destination);
+      oscillator.start();
+      _silentSource = oscillator;
+    } catch (e) {
+      console.warn('[bgPlay] AudioContext gagal:', e.message);
+    }
+  }
+
+  function _resumeAudioCtx() {
+    if (_audioCtx && _audioCtx.state === 'suspended') {
+      _audioCtx.resume().catch(() => {});
+    }
+  }
+
+  // ── C. visibilitychange → resume IFrame ──────────────────────────
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      _resumeAudioCtx();
+      // Beri delay kecil agar IFrame punya waktu wake dari suspend
+      setTimeout(() => {
+        try {
+          if (window._ytPlayer && window._ytReady) {
+            const state = window._ytPlayer.getPlayerState();
+            // PAUSED(2) setelah tab kembali → resume otomatis
+            if (state === YT.PlayerState.PAUSED && window.isPlaying) {
+              window._ytPlayer.playVideo();
+            }
+          }
+        } catch (_) {}
+      }, 400);
+    } else {
+      // Tab di-hide → pastikan AudioContext tidak suspend
+      _resumeAudioCtx();
+    }
+  });
+
+  // ── D. mediaSession position updater ─────────────────────────────
+  // Dipanggil oleh _ytStartProg setiap 400ms via veror-patch section 1
+  window._updPos = function () {
+    if (!('mediaSession' in navigator)) return;
+    if (!window._ytPlayer || !window._ytReady) return;
+    try {
+      const dur = window._ytPlayer.getDuration()    || 0;
+      const pos = window._ytPlayer.getCurrentTime() || 0;
+      const rate = window._ytPlayer.getPlaybackRate ? window._ytPlayer.getPlaybackRate() : 1;
+      if (dur > 0) {
+        navigator.mediaSession.setPositionState({
+          duration:     dur,
+          playbackRate: rate || 1,
+          position:     Math.min(pos, dur),
+        });
+      }
+    } catch (_) {}
+  };
+
+  // ── Integrasikan dengan IFrame ready ─────────────────────────────
+  // _ytOnReady belum ada saat kode ini jalan, jadi kita patch via
+  // MutationObserver setelah YT API ready → hook ke state change.
+  // Simpler: expose fungsi yang dipanggil dari _ytOnState (section 1).
+  window._bgPlayOnPlaying = function () {
+    _startSilentAudio();
+    _resumeAudioCtx();
+    _acquireWakeLock();
+  };
+  window._bgPlayOnPause = function () {
+    _releaseWakeLock();
+  };
+
+  console.log('[bgPlay] background play engine ready');
+})();
+
+// ══════════════════════════════════════════════════════════════════
 //  1. IFRAME ENGINE
 // ══════════════════════════════════════════════════════════════════
 (function () {
@@ -55,11 +180,13 @@ function _ytOnState(e) {
     updAll();
     _ytVizStart();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    if (typeof window._bgPlayOnPlaying === 'function') window._bgPlayOnPlaying();
   } else if (e.data === S.PAUSED) {
     isPlaying = false;
     _ytStopProg();
     updAll();
     if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    if (typeof window._bgPlayOnPause === 'function') window._bgPlayOnPause();
   } else if (e.data === S.ENDED) {
     isPlaying = false;
     _ytStopProg();
